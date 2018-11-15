@@ -1,7 +1,6 @@
 
-Kubernetes基本概念。
+Kubernetes 基本概念。
 
-<!-- more -->
 
 ## Container
 

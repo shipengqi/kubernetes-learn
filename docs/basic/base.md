@@ -1,9 +1,3 @@
----
-title: Kubernetes基本概念
-date: 2018-01-04 12:48:32
-categories: ["Linux"]
-tags: ["Kubernetes"]
----
 
 Kubernetes基本概念。
 

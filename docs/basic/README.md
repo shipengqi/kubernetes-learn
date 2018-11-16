@@ -82,5 +82,5 @@ spec:
 **注意，一下的字段是必须有的**
 - `apiVersion` - 创建该对象所使用的 Kubernetes API 的版本
 - `kind` - 想要创建的对象的类型
-- `metadata` -  帮助识别对象唯一性的数据，包括一个`name`字符串、UID 和可选的`namespace`
+- `metadata` -  帮助识别对象唯一性的数据，每个对象都至少有3个元数据：`namespace`，`name`和`uid`，除此以外还有`labels`
 - `spec`

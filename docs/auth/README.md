@@ -258,3 +258,11 @@ users:
     ## 这个使我们在创建 serviceaccount 生成相关 secret 之后的 data.token 的 base64 解码字符，它本质是一个 jwt token
     token: ...
 ```
+
+使用授权插件来[设置 service account 的权限](https://kubernetes.io/docs/reference/access-authn-authz/authorization/#a-quick-note-on-service-accounts) 。
+
+## RBAC
+基于角色的访问控制机制（Role-Based Access，RBAC），集群管理员可以对用户或服务账号的角色进行更精确的资源访问控制。
+**使用 RBAC 可以很方便的更新访问授权策略而不用重启集群。**
+
+在使用 RBAC 时，只需要在启动 kube-apiserver 时配置`--authorization-mode=RBAC`即可。

@@ -304,6 +304,32 @@ rules:
 ```
 上面例子中的`ClusterRole`定义可用于授予用户对某一特定命名空间，或者所有命名空间中的`secret`（取决于其绑定方式）的读访问权限
 
+#### ClusterRole 聚合
+从 v1.9 开始，在`ClusterRole`中可以通过`aggregationRule`来与其他`ClusterRole`聚合使用：
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: monitoring
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.example.com/aggregate-to-monitoring: "true"
+rules: [] # Rules are automatically filled in by the controller manager.
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: monitoring-endpoints
+  labels:
+    rbac.example.com/aggregate-to-monitoring: "true"
+# These rules will be added to the "monitoring" role.
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints", "pods"]
+  verbs: ["get", "list", "watch"]
+```
+
 ### RoleBinding与ClusterRoleBinding
 `RoleBinding`把`Role`或`ClusterRole`中定义的各种权限映射到`User`，`Service Account`或者`Group`，从而让这些用户继承角色在`namespace`中的权限。`ClusterRoleBinding`
 让用户继承`ClusterRole`在整个集群中的权限。

@@ -1,2 +1,1 @@
-# kubernetes-learn
-Kubernetes learning.
+# Kubernetes 学习笔记

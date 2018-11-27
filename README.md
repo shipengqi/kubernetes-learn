@@ -18,7 +18,7 @@ PaaS 项目可以帮助用户大规模部署应用到集群，但是它的打包
 ## 容器基础
 容器其实就是一种沙盒技术。沙盒就像一个集装箱，把你的应用装起来，这样应用和应用之间互不干扰，并且这个集装箱应用可以很方便的搬来搬去。
 
-容器技术的核心iushi通过约束和修改进程的动态表现，从而为其创造出一个“边界”。对于Docker 容器，**Cgroups 技术（控制组 Control groups）**是用来制造约束的主要手段，
+容器技术的核心就是通过约束和修改进程的动态表现，从而为其创造出一个“边界”。对于Docker 容器，**Cgroups 技术（控制组 Control groups）**是用来制造约束的主要手段，
 **Namespace 技术**是用来修改进程视图的主要方法。
 
 ### Namespace
@@ -238,10 +238,10 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 
 而你进入容器之后执行的`/bin/bash`，就是`/bin`目录下的可执行文件，与宿主机的`/bin/bash`完全不同。
 
-现在，你应该可以理解，对Docker 项目来说，它最核心的原理实际上就是为待创建的用户进程：
-1. 启用Linux Namespace 配置；
-2. 设置指定的Cgroups 参数；
-3. 切换进程的根目录（Change Root）。
+现在，你应该可以理解，**对Docker 项目来说，它最核心的原理实际上就是为待创建的用户进程**：
+1. **启用Linux Namespace 配置**；
+2. **设置指定的Cgroups 参数**；
+3. **切换进程的根目录（Change Root）**。
 
 这样，一个完整的容器就诞生了。不过，Docker 项目在最后一步的切换上会优先使用`pivot_root`系统调用，如果系统不支持，才会使用`chroot`。
 
@@ -265,3 +265,79 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 **由于rootfs 里打包的不只是应用，而是整个操作系统的文件和目录，也就意味着，应用以及它运行所需要的所有依赖，都被封装在了一起。**
 
 **对一个应用来说，操作系统本身才是它运行所需要的最完整的“依赖库”。**
+
+有了容器镜像“打包操作系统”的能力，这个最基础的依赖环境也终于变成了应用沙盒的一部分。这就赋予了容器所谓的一致性：无论在本地、云端，还是在一台任何地方的机器上，用户只
+需要解压打包好的容器镜像，那么这个应用运行所需要的完整的执行环境就被重现出来了。
+
+**这种深入到操作系统级别的运行环境一致性，打通了应用在本地开发和远端执行环境之间难以逾越的鸿沟。**
+
+#### 联合文件系统（Union File System）
+难道我每开发一个应用，或者升级一下现有的应用，都要重复制作一次rootfs 吗？
+
+**Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量rootfs。**
+
+Union File System 也叫UnionFS，最主要的功能是将多个不同位置的目录联合挂载（unionmount）到同一个目录下。比如，我现在有两个目录A 和B，它们分别有两个文件：
+```bash
+$ tree
+.
+├── A
+│ ├── a
+│ └── x
+└── B
+  ├── b
+  └── x
+
+# 使用联合挂载的方式，将这两个目录挂载到一个公共的目录C 上
+$ mkdir C
+$ mount -t aufs -o dirs=./A:./B none ./C
+
+# 查看目录C 的内容，就能看到目录A 和B 下的文件被合并到了一起
+$ tree ./C
+./C
+├── a
+├── b
+└── x
+```
+可以看到，在这个合并后的目录C 里，有a、b、x 三个文件，并且x 文件只有一份。这，就是“合并”的含义。此外，如果你在目录C 里对a、b、x 文件做修改，这些修改也会在对应的
+目录A、B 中生效。
+
+Docker 项目中，又是如何使用这种Union File System 的呢？
+
+AuFS 的全称是 Advance UnionFS，从这些名字中你应该能看出这样两个事实：
+1. 它是对Linux 原生UnionFS 的重写和改进；
+2. 它的作者怨气好像很大。我猜是Linus Torvalds（Linux 之父）一直不让AuFS 进入Linux内核主干的缘故，所以我们只能在Ubuntu 和Debian 这些发行版上使用它。
+
+对于AuFS 来说，它最关键的目录结构在`/var/lib/docker`路径下的`diff`目录：
+```bash
+/var/lib/docker/aufs/diff/<layer_id>
+```
+通过一个具体例子来看一下。我们启动一个容器，比如：
+```bash
+$ docker run -d ubuntu:latest sleep 3600
+```
+这时候，Docker 就会从Docker Hub 上拉取一个Ubuntu 镜像到本地。
+这个所谓的“镜像”，实际上就是一个Ubuntu 操作系统的rootfs，它的内容是Ubuntu 操作系统的所有文件和目录。不过，与之前我们讲述的rootfs 稍微不同的是，Docker 镜像使用的
+rootfs，往往由多个“层”组成：
+```bash
+$ docker image inspect ubuntu:latest
+...
+"RootFS": {
+  "Type": "layers",
+  "Layers": [
+    "sha256:f49017d4d5ce9c0f544c...",
+    "sha256:8f2b771487e9d6354080...",
+    "sha256:ccd4d61916aaa2159429...",
+    "sha256:c01d74f99de40e097c73...",
+    "sha256:268a067217b5fe78e000..."
+  ]
+}
+```
+
+可以看到，这个Ubuntu 镜像，实际上由五个层组成。这五个层就是五个增量rootfs，每一层都是Ubuntu 操作系统文件与目录的一部分；而在使用镜像时，Docker 会把这些增量联合挂载
+在一个统一的挂载点上（等价于前面例子里的“/C”目录）。
+
+这个挂载点就是`/var/lib/docker/aufs/mnt/`，比如：
+```bash
+$ ls /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fcfa2a2f5c89dc21ee30e166be823ceaeba15dce64
+bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var
+```

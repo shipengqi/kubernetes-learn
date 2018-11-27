@@ -363,6 +363,7 @@ $ cat /sys/fs/aufs/si_972c6d361e6b32ba/br[0-9]*
 
 我们可以看到，镜像的层都放置在`/var/lib/docker/aufs/diff`目录下，然后被联合挂载在`/var/lib/docker/aufs/mnt`里面。而且，
 从这个结构可以看出来，这个容器的rootfs 由如下图所示的三部分组成：
+
 ![](../images/layer.jpg)
 
 第一部分，**只读层**。
@@ -402,7 +403,7 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 它是一个以“-init”结尾的层，夹在只读层和读写层之间。Init 层是Docker 项目单独生成的一个内部层，专门用来存放`/etc/hosts`、`/etc/resolv.conf`等信息。
 
 需要这样一层的原因是，这些文件本来属于只读的Ubuntu 镜像的一部分，但是用户往往需要在启动容器时写入一些指定的值比如`hostname`，所以就需要在可读写层对它们进行修改。
-可是，这些修改往往只对当前的容器有效，我们并不希望执行`docker commit`时，把这些信息连同可读写层一起提交掉。
+可是，**这些修改往往只对当前的容器有效，我们并不希望执行`docker commit`时，把这些信息连同可读写层一起提交掉**。
 
 所以，Docker 做法是，在修改了这些文件之后，以一个单独的层挂载了出来。而用户**执行`docker commit`只会提交可读写层**，所以是不包含这些内容的。
 最终，这7 个层都被联合挂载到`/var/lib/docker/aufs/mnt`目录下，表现为一个完整的Ubuntu 操作系统供容器使用。
@@ -410,4 +411,5 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 既然容器的rootfs（比如，Ubuntu 镜像），是以只读方式挂载的，那么又如何在容器里修改Ubuntu 镜像的内容呢？（提示：Copy-on-Write）
 
 **读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如
-修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中修改，种方式也被称为`copy-on-write`**。
+修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中修改，这种方式被称为`copy-on-write`**。(我们前面已经知道，aufs是一层一层往上盖的，
+上层的文件会覆盖下层的，所以这里复制到容器层的文件，在commit时会提交，在运行容器是会覆盖下层。)

@@ -413,3 +413,76 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 **读写层通常也称为容器层，下面的只读层称为镜像层，所有的增删查改操作都只会作用在容器层，相同的文件上层会覆盖掉下层。知道这一点，就不难理解镜像文件的修改，比如
 修改一个文件的时候，首先会从上到下查找有没有这个文件，找到，就复制到容器层中修改，这种方式被称为`copy-on-write`**。(我们前面已经知道，aufs是一层一层往上盖的，
 上层的文件会覆盖下层的，所以这里复制到容器层的文件，在commit时会提交，aufs联合挂在时就会覆盖下层。)
+
+`docker commit`，实际上就是在容器运行起来后，把最上层的“可读写层”，加上原先容器镜像的只读层，打包组成了一个新的镜像。当然，下面这些只读层在宿主机上是共享的，不会占用
+额外的空间。
+
+而由于使用了联合文件系统，你在容器里对镜像rootfs 所做的任何修改，都会被操作系统先复制到这个可读写层，然后再修改。这就是所谓的：`Copy-on-Write`。
+
+
+## `docker exec`原理
+docker exec 是怎么做到进入容器里的？
+
+实际上，Linux Namespace 创建的隔离空间虽然看不见摸不着，但一个进程的Namespace 信息在宿主机上是确确实实存在的，并且是以一个文件的方式存在。
+比如，通过如下指令，你可以看到当前正在运行的Docker 容器的进程号（PID）是25686：
+```bash
+$ docker inspect --format '{{ .State.Pid }}' 4ddf4638572d
+25686
+```
+这时，你可以通过查看宿主机的proc 文件，看到这个`25686`进程的所有Namespace 对应的文件：
+```bash
+$ ls -l /proc/25686/ns
+total 0
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 cgroup -> cgroup:[4026531835]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 ipc -> ipc:[4026532278]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 mnt -> mnt:[4026532276]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 net -> net:[4026532281]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 pid -> pid:[4026532279]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 pid_for_children -> pid:[4026532279]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 user -> user:[4026531837]
+lrwxrwxrwx 1 root root 0 Aug 13 14:05 uts -> uts:[4026532277]
+```
+
+可以看到，一个进程的每种Linux Namespace，都在它对应的`/proc/[进程号]/ns`下有一个对应的虚拟文件，并且链接到一个真实的Namespace 文件上。
+
+有了这样一个可以“hold 住”所有Linux Namespace 的文件，我们就可以对Namespace 做一些很有意义事情了，比如：加入到一个已经存在的Namespace 当中。
+这也就意味着：**一个进程，可以选择加入到某个进程已有的Namespace 当中，从而达到“进入”这个进程所在容器的目的，这正是`docker exec`的实现原理**。
+
+这个操作所依赖的，乃是一个名叫`setns()`的Linux 系统调用。
+
+
+## volume
+容器技术使用了rootfs 机制和Mount Namespace，构建出了一个同宿主机完全隔离开的文件系统环境。这时候，我们就需要考虑这样两个问题：
+1. 容器里进程新建的文件，怎么才能让宿主机获取到？
+2. 宿主机上的文件和目录，怎么才能让容器里的进程访问到？
+
+**Volume 机制，允许你将宿主机上指定的目录或者文件，挂载到容器里面进行读取和修改操作。**
+
+Docker 项目里，它支持两种Volume 声明方式，可以把宿主机目录挂载进容器的`/test`目录当中：
+```bash
+$ docker run -v /test ...
+$ docker run -v /home:/test ...
+```
+
+在第一种情况下，由于你并没有显示声明宿主机目录，那么Docker 就会默认在宿主机上创建一个临时目录`/var/lib/docker/volumes/[VOLUME_ID]/_data`，然后把它挂载到容器的
+`/test`目录上。而在第二种情况下，Docker 就直接把宿主机的`/home`目录挂载到容器的`/test`目录上。
+
+Docker 是如何做到把一个宿主机上的目录或者文件，挂载到容器里面去的？
+
+在介绍容器镜像的部分，我们知道，当容器进程被创建之后，尽管开启了Mount Namespace，但是在它执行`chroot`（或者`pivot_root`）之前，容器进
+程一直可以看到宿主机上的整个文件系统。
+
+而宿主机上的文件系统，也自然包括了我们要使用的容器镜像。这个镜像的各个层，保存在`/var/lib/docker/aufs/diff`目录下，在容器进程启动后，它们会被联合挂载在
+`/var/lib/docker/aufs/mnt/`目录中，这样容器所需的rootfs 就准备好了。
+
+所以，我们只需要在rootfs 准备好之后，在执行chroot 之前，把Volume 指定的宿主机目录（比如`/home`目录），挂载到指定的容器目录（比如`/test`目录）在宿主机上对应的目录
+（即`/var/lib/docker/aufs/mnt/[可读写层ID]/test`）上，这个Volume 的挂载工作就完成了。
+
+更重要的是，由于执行这个挂载操作时，“容器进程”已经创建了，也就意味着此时Mount Namespace 已经开启了。所以，这个挂载事件只在这个容器里可见。你在宿主机上，是看不见
+容器内部的这个挂载点的。这就保证了容器的隔离性不会被Volume 打破。
+
+> 这里的"容器进程"，是 Docker 创建的一个容器初始化进程(`dockerinit`)，而不是应用进程(`ENTRYPOINT` + `CMD`)。`dockerinit`会负责完成根目录的准备、挂载设备和目录、
+配置`hostname`等一系列需要在容器内进行的初始化操作。最后，它通过`execv()`系统调用，让应用进程取代自己，成为容器里的`PID=1`的进程。
+
+这里要使用到的挂载技术，就是Linux 的绑定挂载（bind mount）机制。它的主要作用就是，允许你将一个目录或者文件，而不是整个设备，挂载到一个指定的目录上。并且，这时你在
+该挂载点上进行的任何操作，只是发生在被挂载的目录或者文件上，而原挂载点的内容则会被隐藏起来且不受影响。

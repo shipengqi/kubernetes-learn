@@ -10,7 +10,7 @@
 ## Secret 三种类型
 - `Opaque`：`base64` 编码格式的 `Secret`，存储密码、密钥等敏感信息。
 - `kubernetes.io/dockerconfigjson`：存储私有 `docker registry` 的认证信息。
-- `Service Account`：用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会**自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录**。
+- `ServiceAccount`：用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会**自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录**。
 
 ## Opaque Secret
 `Opaque` 类型的数据是一个 `map` 类型，`value` 必须是 `base64` 编码格式：
@@ -240,4 +240,4 @@ echo "eyJjY3IuY2NzLnRlbmNlbnR5dW4uY29tL3RlbmNlbnR5dW4iOnsidXNlcm5hbWUiOiIzMzIxMz
 ```
 
 ## `kubernetes.io/service-account-token`
-`Service Account` 用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录中。
+`ServiceAccount` 用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录中。

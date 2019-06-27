@@ -15,21 +15,41 @@ API 访问要经过的三个步骤：
 
 ## 认证
 开启 TLS 时，所有的请求都需要首先认证。Kubernetes 支持同时开启多个认证插件（只要有一个认证通过即可）。如果认证成功，则用户的 `username` 会传入授
-权模块做进一步授权验证；而对于认证失败的请求则返回 HTTP 401。
+权模块做进一步授权验证；而对于认证失败的请求则返回 HTTP **401**。
 
 Kubernetes 支持多种认证插件：
 - X509 证书
 - 静态 Token 文件
 - 引导 Token
 - 静态密码文件
-- Service Account
+- [Service Account](./service-account.md)
 - OpenID
 - Webhook
 - 认证代理
 - OpenStack Keystone 密码
 
+详细使用参考[这里](./authentication.md)
+
 ## 授权
 授权主要是用于对集群资源的访问控制，通过检查请求包含的相关属性值，与相对应的访问策略相比较，API 请求必须满足某些策略才能被处理。
 
-Kubernetes 也支持同时开启多个授权插件（只要有一个验证通过即可）。如果授权成功，则用户的请求会发送到准入控制模块做进一步的请求验证；
-对于授权失败的请求则返回 HTTP 403。
+Kubernetes 也支持同时开启多个授权插件（如 `--authorization-mode=RBAC,ABAC`，只要有一个验证通过即可）。如果授权成功，则用户的请求会发送到准入控制模块做进一步的请求验证；
+对于授权失败的请求则返回 HTTP **403**。
+
+授权处理以下的请求属性：
+- user, group, extra
+- API、请求方法（如 get、post、update、patch 和 delete）和请求路径（如 `/api`）
+- 请求资源和子资源
+- Namespace
+- API Group
+
+支持以下授权插件：
+- ABAC
+- [RBAC](./rbac.md)
+- Webhook
+- Node
+
+详细使用参考[这里](./authorization.md)
+
+### AlwaysDeny 和 AlwaysAllow
+Kubernetes 还支持 AlwaysDeny 和 AlwaysAllow 模式，其中 AlwaysDeny 仅用来测试，而 AlwaysAllow 则 允许所有请求（会覆盖其他模式）。

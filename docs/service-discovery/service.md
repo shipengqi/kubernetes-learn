@@ -65,9 +65,9 @@ status:
       - ip: 146.148.47.155
 ```
 
-来自外部负载均衡器的流量将直接打到 backend Pod 上，不过实际它们是如何工作的，这要依赖于云提供商。 在这些情况下，将根据用户设置的 loadBalancerIP 来创建
-负载均衡器。 某些云提供商允许设置 loadBalancerIP。如果没有设置 loadBalancerIP，将会给负载均衡器指派一个临时 IP。 如果设置了 loadBalancerIP，但云提供
-商并不支持这种特性，那么设置的 loadBalancerIP 值将会被忽略掉。
+来自外部负载均衡器的流量将直接打到 backend Pod 上，不过实际它们是如何工作的，这要依赖于云提供商。 在这些情况下，将根据用户设置的 `loadBalancerIP` 来创建
+负载均衡器。 某些云提供商允许设置 `loadBalancerIP`。如果没有设置 `loadBalancerIP`，将会给负载均衡器指派一个临时 IP。 如果设置了 `loadBalancerIP`，但云提供
+商并不支持这种特性，那么设置的 `loadBalancerIP` 值将会被忽略掉。
 
 
 ## 外部 IP

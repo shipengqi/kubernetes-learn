@@ -34,11 +34,8 @@
 }
 ```
 
-- 版本属性:
-  - `apiVersion`，`string`；
-  - `kind`，`string`；
-- `spec`
-  -
+参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/abac/)
+
 ## RBAC
 参考[这里](./rbac.md)
 
@@ -72,3 +69,8 @@ contexts:
     user: name-of-api-server
   name: webhook
 ```
+
+参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/webhook/)
+
+## Node 授权
+参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/node/)

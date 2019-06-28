@@ -58,7 +58,7 @@ Kubernetes 对象是 “目标性记录” —— 一旦创建对象，Kubernete
 `kubectl`其实还是在调用 Kubernetes API 。
 
 例如，`nginx-deployment.yaml`：
-```yaml
+```yml
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:

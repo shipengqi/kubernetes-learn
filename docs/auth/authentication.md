@@ -57,12 +57,41 @@ users:
 
 
 ## 静态 Token 文件
-使用静态 Token 文件认证只需要 API Server 启动时配置 `--token-auth-file=SOMEFILE`。该文件为 csv 格式，每行至少包括三列 token,username,user id，后面是可选的 group 名，如：
+使用静态 Token 文件认证只需要 API Server 启动时配置 `--token-auth-file=SOMEFILE`。该文件为 csv 格式，每行至少包括三列 token,user,uid，后面是可选的 group 名，如：
 ```
 token,user,uid,"group1,group2,group3"
 ```
-## 引导 Token
+客户端在使用 token 认证时，需要在请求头中加入 `Bearer Authorization` 头，比如：
+```
+Authorization: Bearer 31ada4fd-adec-460c-809a-9e56ceb75269
+```
+
 ## 静态密码文件
+只需要 API Server 启动时配置 `--basic-auth-file=SOMEFILE`。该文件为 csv 格式，每行至少包括三列 password,user,uid，后面是可选的 group 名，如：
+```
+password,user,uid,"group1,group2,group3"
+```
+客户端在使用 token 认证时，需要在请求头中加入 `Basic Authorization` 头，比如：
+```
+Authorization: Basic BASE64ENCODED(USER:PASSWORD)
+```
+
+
 ## ServiceAccount
+参考[这里](./service-account.md)
+
 ## OpenID
-## Webhook
+OpenID 提供了 OAuth2 的认证机制，是很多云服务商（如 GCE、Azure 等）的首选认证方法。
+
+使用 OpenID 认证，API Server 需要配置
+`--oidc-issuer-url`，如 `https://accounts.google.com`
+`--oidc-client-id`，如 kubernetes
+`--oidc-username-claim`，如 sub
+`--oidc-groups-claim`，如 groups
+`--oidc-ca-file`，如 `/etc/kubernetes/ssl/kc-ca.pem`
+
+
+![](../images/oidc.png)
+
+参考[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication/index.html)
+和[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication2/index.html)

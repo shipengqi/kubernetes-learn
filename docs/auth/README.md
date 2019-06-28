@@ -53,3 +53,6 @@ Kubernetes 也支持同时开启多个授权插件（如 `--authorization-mode=R
 
 ### AlwaysDeny 和 AlwaysAllow
 Kubernetes 还支持 AlwaysDeny 和 AlwaysAllow 模式，其中 AlwaysDeny 仅用来测试，而 AlwaysAllow 则 允许所有请求（会覆盖其他模式）。
+
+## 准入控制
+参考[这里](./admission.md)

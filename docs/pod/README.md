@@ -31,6 +31,12 @@ Pod 的两种使用方式：
 Pod中可以共享两种资源：网络和存储。如：
 
 ```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: chatbot-pod
+  labels:
+    app: chatbot
 spec:
   initContainers:
   - name: install

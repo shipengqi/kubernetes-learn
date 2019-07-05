@@ -5,7 +5,7 @@ Pod 是有生命周期的，它们可以被创建，也可以被销毁，并且�
 因为，Kubernetes 定义了 `Service` 对象。 **Service 是对一组提供相同功能的 Pods 的抽象，并为它们提供一个统一的入口**。
 借助 Service，应用可以方便的实现服务发现与负载均衡，并实现应用的零宕机升级。Service 通过 [Label Selector](../cluster/label.md) 来选取服务后端，
 一般配合 Replication Controller 或者 Deployment 来保证后端容器的正常运行。
-这些匹配标签的 Pod IP 和端口列表组成 endpoints，由 kube-proxy 负责将服务 IP 负载均衡到这些 endpoints 上。
+这些匹配标签的 Pod IP 和端口列表组成 endpoints，由 `kube-proxy` 负责将服务 IP 负载均衡到这些 endpoints 上。
 
 比如，一个 backend pod 要访问 mysql pod，mysql 有三个副本， backend 不需要关心 mysql pod 可能会发生的变化，Service 定义的抽象能够解耦这种关联。
 
@@ -13,7 +13,7 @@ Pod 是有生命周期的，它们可以被创建，也可以被销毁，并且�
 Service 有四种类型， `spec.type` 的取值以及行为如下：
 - ClusterIP：默认类型，自动分配一个仅 cluster 内部可以访问的虚拟 IP
 - NodePort：在 ClusterIP 基础上为 Service 在每台机器上绑定一个端口，这样就可以通过 `<NodeIP>:NodePort` 来访问该服务，简单的说就是暴露一个节点的端口。
-如果 kube-proxy 设置了 `--nodeport-addresses=10.240.0.0/16`（v1.10 支持），那么该 NodePort 仅对设置在范围内的 IP 有效。
+如果 `kube-proxy` 设置了 `--nodeport-addresses=10.240.0.0/16`（v1.10 支持），那么该 NodePort 仅对设置在范围内的 IP 有效。
 - LoadBalancer：在 NodePort 的基础上，借助 cloud provider 创建一个外部的负载均衡器，并将请求转发到 `<NodeIP>:NodePort`
 - ExternalName：将服务通过 DNS CNAME 记录方式转发到指定的域名（通过 `spec.externlName` 设定）。需要 kube-dns 版本在 1.7 以上。
 
@@ -169,7 +169,7 @@ Service、Endpoints 和 Pod 支持三种类型的协议：
 - 希望服务指向另一个 Namespace 中或其它集群中的服务。
 - 正在将工作负载转移到 Kubernetes 集群，和运行在 Kubernetes 集群之外的 backend。
 
-两种方法定义没有 selector 的 Service。
+两种方法定义没有 `selector` 的 Service。
 
 
 ### 自定义 endpoint
@@ -213,9 +213,17 @@ spec:
 其值为 `my.database.example.com`。并且，该服务不会自动分配 Cluster IP，需要通过 service 的 DNS 来访问。
 
 ## Headless Service
-Headless Service 即不需要 Cluster IP 的服务，即在创建服务的时候指定 `spec.clusterIP=None`。包括两种类型
-- 不指定 Selectors，但设置 `externalName`，即上面的 **DNS 转发**，通过 CNAME 记录处理
-- 指定 Selectors，通过 DNS A 记录设置后端 `endpoint` 列表
+Headless Service 即不需要 Cluster IP 的服务。有时不需要或不想要负载均衡，以及单独的 Service IP。 遇到这种情况，
+可以通过指定 Cluster IP（`spec.clusterIP`）的值为 `None` 来创建 Headless Service。
+
+这个选项允许开发人员自由寻找他们自己的方式，从而降低与 Kubernetes 系统的耦合性。 应用仍然可以使用一种自注册的模式和适配器，对其它需要发现机制的系统能够很容易地基于这个 API 来构建。
+
+对这类 Service 并不会分配 Cluster IP，`kube-proxy` 不会处理它们，而且平台也不会为它们进行负载均衡和路由。 DNS 如何实现自动配置，依赖于 Service 是否定义了 `selector`。
+
+
+- 定义了 Selectors 的 Headless Service，Endpoint 控制器在 API 中创建了 `Endpoints` 记录，并且修改 DNS 配置返回 A 记录（地址），通过这个
+地址直接到达 Service 的后端 Pod 上。
+- 不定义 Selectors 的 Headless Service，但设置 `externalName`，即上面的 **DNS 转发**，通过 CNAME 记录处理
 
 ```yml
 apiVersion: v1

@@ -1,0 +1,131 @@
+logo:
+  text: Kubernetes Learn
+  type: link
+  path: index.html
+main:
+- text: Pod
+  type: label
+- text: Pod 简介
+  type: link
+  path: pod/README.html
+- text: Pod 生命周期
+  type: link
+  path: pod/lifecycle.html
+- text: Init 容器
+  type: link
+  path: pod/init.html
+- text: Pod 安全策略
+  type: link
+  path: pod/pod-security-policy.html
+- text: Pod Preset
+  type: link
+  path: pod/pod-preset.html
+- text: Pod 中断与 PDB
+  type: link
+  path: pod/pdb.html
+
+- text: 集群资源管理
+  type: label
+- text: Node
+  type: link
+  path: cluster/node.html
+- text: Namespace
+  type: link
+  path: cluster/namespace.html
+- text: Label
+  type: link
+  path: cluster/label.html
+- text: Annotation
+  type: link
+  path: cluster/annotation.html
+- text: Taints 和 tolerations
+  type: link
+  path: cluster/taint.html
+- text: 垃圾收集
+  type: link
+  path: cluster/garbage-collection.html
+
+- text: 控制器
+  type: label
+- text: Deployment
+  type: link
+  path: controller/deployment.html
+- text: StatefulSet
+  type: link
+  path: controller/stateful-set.html
+- text: DaemonSet
+  type: link
+  path: controller/daemon-set.html
+- text: ReplicaSet
+  type: link
+  path: controller/rc-rs.html
+- text: Job
+  type: link
+  path: controller/job.html
+- text: CronJob
+  type: link
+  path: controller/cron-job.html
+- text: Horizontal Pod Autoscaling
+  type: link
+  path: controller/hpa.html
+- text: 准入控制
+  type: link
+  path: controller/admission.html
+
+- text: 服务发现
+  type: label
+- text: Service
+  type: link
+  path: service-discovery/service.html
+- text: Ingress
+  type: link
+  path: service-discovery/ingress.html
+
+
+- text: 身份与权限
+  type: label
+- text: 身份与权限控制
+  type: link
+  path: auth/README.html
+- text: 认证
+  type: link
+  path: auth/authentication.html
+- text: 授权
+  type: link
+  path: auth/authorization.html
+- text: Service Account
+  type: link
+  path: auth/service-account.html
+- text: RBAC
+  type: link
+  path: auth/rbac.html
+
+- text: STORAGE
+  type: label
+- text: Secret
+  type: link
+  path: storage/secret.html
+- text: ConfigMap
+  type: link
+  path: storage/configmap.html
+- text: Volume
+  type: link
+  path: storage/volume.html
+- text: Persistent Volume
+  type: link
+  path: storage/pv.html
+- text: StorageClass
+  type: link
+  path: storage/storageclass.html
+
+- text: THEME
+  type: label
+- text: 使用文档主题
+  type: link
+  path: theme/theme-usage.html
+
+- text: SUPPORT AND FEEDBACK
+  type: label
+- text: Raise an Issue on Github
+  type: link
+  path: https://github.com/shipengqi/kubernetes-learn/issues/new

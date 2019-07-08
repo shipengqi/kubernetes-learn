@@ -3,14 +3,14 @@ title: Kubernetes 基本概念
 ---
 # Kubernetes 基本概念
 
-Kubernetes 是谷歌开源的容器集群管理系统，是Google多年大规模容器管理技术 Borg 的开源版本，主要功能包括：
+Kubernetes 是谷歌开源的容器集群管理系统，是 Google 多年大规模容器管理技术 Borg 的开源版本，主要功能包括：
 
 - 基于容器的应用部署、维护和滚动升级
 - 负载均衡和服务发现
 - 跨机器和跨地区的集群调度
 - 自动伸缩
 - 无状态服务和有状态服务
-- 广泛的`Volume`支持
+- 广泛的 `Volume` 支持
 - 插件机制保证扩展性
 
 ## 架构
@@ -30,7 +30,7 @@ Kubernetes 主要由以下几个核心组件组成：
 
 
 ## kubernetes 中的对象
-kubernetes 中的 Object，这些对象都可以在`yaml`文件中作为一种 API 类型来配置。
+kubernetes 中的 Object，这些对象都可以在 `yaml` 文件中作为一种 API 类型来配置。
 
 | 类别 | 名称 |
 | ------ | ------- |
@@ -43,12 +43,12 @@ Kubernetes 对象是 “目标性记录” —— 一旦创建对象，Kubernete
 这就是 Kubernetes 集群的**期望状态**。
 
 ### Spec 与状态
-每个 Kubernetes 对象包含两个嵌套的对象字段，它们负责管理对象的配置：对象`spec`和对象`status`。`spec`必须提供，它描述了对象的**期望状态** —— 希望对象所具有的特征。
-`status`描述了对象的**实际状态**，它是由 Kubernetes 系统提供和更新。在任何时刻，Kubernetes 控制平面一直处于活跃状态，管理着对象的实际状态以与我们所期望的状态相匹配。
+每个 Kubernetes 对象包含两个嵌套的对象字段，它们负责管理对象的配置：对象 `spec` 和对象` status`。`spec` 必须提供，它描述了对象的**期望状态** —— 希望对象所具有的特征。
+`status` 描述了对象的**实际状态**，它是由 Kubernetes 系统提供和更新。在任何时刻，Kubernetes 控制平面一直处于活跃状态，管理着对象的实际状态以与我们所期望的状态相匹配。
 
 ### 创建 Kubernetes 对象
-可以用 Kubernetes API 创建对象，也可以使用`kubectl`。**必须提供对象的`spec`**，常用的方式是在`.yaml`文件中为`kubectl`提供这些信息。
-`kubectl`其实还是在调用 Kubernetes API 。
+可以用 Kubernetes API 创建对象，也可以使用 `kubectl`。**必须提供对象的 `spec`**，常用的方式是在 `.yaml` 文件中为 `kubectl` 提供这些信息。
+`kubectl` 其实还是在调用 Kubernetes API 。
 
 例如，`nginx-deployment.yaml`：
 ```yml
@@ -75,5 +75,5 @@ spec:
 **注意，一下的字段是必须有的**
 - `apiVersion` - 创建该对象所使用的 Kubernetes API 的版本
 - `kind` - 想要创建的对象的类型
-- `metadata` -  帮助识别对象唯一性的数据，每个对象都至少有3个元数据：`namespace`，`name`和`uid`，除此以外还有`labels`
+- `metadata` - 帮助识别对象唯一性的数据，每个对象都至少有3个元数据：`namespace`，`name` 和 `uid`，除此以外还有 `labels`
 - `spec`

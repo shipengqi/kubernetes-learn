@@ -7,3 +7,14 @@
 - [身份与权限控制](./auth)
 - [服务发现](./service-discovery)
 - [存储](./storage)
+
+## Usage
+```sh
+# install dependencies
+yarn
+
+# start dev server
+yarn start
+
+# deploy
+```

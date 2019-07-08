@@ -6,11 +6,14 @@
   },
   "scripts": {
     "start": "hexo s -p 8082",
-    "start:debug": "hexo s -p 8082 --debug"
+    "start:debug": "hexo s -p 8082 --debug",
+    "docs:build": "hexo clean && hexo g",
+    "deploy": "hexo clean && hexo d"
   },
   "dependencies": {
     "hexo": "^3.3.8",
     "hexo-cli": "^1.0.3",
+    "hexo-deployer-git": "^1.0.0",
     "hexo-renderer-ejs": "^0.2.0",
     "hexo-renderer-less": "^0.2.0",
     "hexo-renderer-marked": "^0.2.10",

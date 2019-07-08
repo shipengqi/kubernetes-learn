@@ -17,4 +17,5 @@ yarn
 yarn start
 
 # deploy
+yarn deploy
 ```

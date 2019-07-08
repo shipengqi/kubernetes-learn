@@ -24,7 +24,7 @@ $ git clone git@github.com:zalando-incubator/hexo-theme-doc-seed.git
 $ yarn
 ```
 
-4. 修改 `package.json`
+4. 修改 `package.json`，直接运行 `hexo server` 或者 `hexo s` 可能会找不到命令。
 ```js
   "scripts": {
     "start": "hexo s -p 8082"
@@ -34,9 +34,20 @@ $ yarn
 5. 修改 `_config.yml`
 ```yml
 theme: ../node_modules/hexo-theme-doc
+
+# 如果你的网站存放在子目录中，例如 http://yoursite.com/blog
+# 则 url 设为 http://yoursite.com/blog 并把 root 设为 /blog/
+url: http://www.shipengqi.top/kubernetes-learn
+root: /kubernetes-learn/
+
+# deploy
+deploy:
+- type: git
+  repo: git@github.com:shipengqi/kubernetes-learn.git
+  branch: gh-pages
 ```
 
-6. 启动开发服务
+6. 启动开发服务，访问 http://localhost:8082 。
 ```sh
 $ yarn start
 ```

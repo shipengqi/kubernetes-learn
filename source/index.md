@@ -14,7 +14,7 @@ Kubernetes 是谷歌开源的容器集群管理系统，是 Google 多年大规�
 - 插件机制保证扩展性
 
 ## 架构
-![](../imgs/architecture.png)
+![](./imgs/architecture.png)
 
 ## Kubernetes 核心组件
 

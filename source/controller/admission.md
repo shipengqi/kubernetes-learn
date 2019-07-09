@@ -17,6 +17,7 @@ title: 准入控制
 
 ## 为什么需要准入控制插件
 Kubernetes 的许多高级功能都要求启用一个准入控制插件，以便正确地支持该特性。因此，一个没有正确配置准入控制插件的 Kubernetes API server 是不完整的，它不会支持所期望的所有特性。
+
 ## 准入控制器列表
 准入控制支持同时开启多个插件，如果插件序列中任何一个拒绝了该请求，则整个请求将立即被拒绝并且返回一个错误给终端用户。
 Kubernetes 目前提供了以下几种准入控制插件：
@@ -24,31 +25,44 @@ Kubernetes 目前提供了以下几种准入控制插件：
 - AlwaysPullImages：此准入控制器修改每个 Pod 的时候都强制重新拉取镜像。
 - AlwaysDeny：拒绝所有的请求。用于测试。
 - DenyEscalatingExec：禁止特权容器的 `exec` 和 `attach` 操作。
-- ImagePolicyWebhook：此准入控制器允许后端判断镜像拉取策略，例如配置镜像仓库的密钥。
-- DefaultStorageClass：此准入控制器观察创建 PersistentVolumeClaim 时不请求任何特定存储类的对象，并自动向其添加默认存储类。这样，用户就不需要关注特殊存储类而获得默认存储类。
-- DefaultTolerationSeconds：此准入控制器将Pod的容忍时间 notready:NoExecute 和 unreachable:NoExecute 默认设置为5分钟。
+- ImagePolicyWebhook：此准入控制器允许使用一个后端的 webhook 判断镜像拉取策略，例如配置镜像仓库的密钥。
+- ServiceAccount：自动创建默认 ServiceAccount，并确保 Pod 引用的 ServiceAccount 已经存在。
+- SecurityContextDeny：此准入控制器将拒绝任何试图设置某些升级的 SecurityContext 字段的 pod 。
+- ResourceQuota：限制 Pod 的请求不会超过配额，需要在 namespace 中创建一个 ResourceQuota 对象。
+- LimitRanger：此准入控制器将确保所有资源请求不会超过 namespace 的 LimitRange。
+- InitialResources：此准入控制器观察 pod 创建请求。如果容器忽略了 requests 和 limits 计算资源，那么插件就会根据运行相同镜像的容器的历史使用记录来自动填充计算资源请求。
+如果没有足够的数据进行决策，则请求将保持不变。
+- NamespaceLifecycle：此准入控制器强制执行正在终止的命令空间中不能创建新对象，并确保 Namespace 拒绝不存在的请求。此准入控制器还防止缺失三个系统
+保留的命名空间 `default`、`kube-system`、`kube-public`。
+- DefaultStorageClass：此准入控制器观察创建 PersistentVolumeClaim 时不请求任何特定 StorageClass 的对象，并自动向其添加默认 StorageClass。这样，
+用户就不需要关注特殊 StorageClass 而获得默认 StorageClass。
+- DefaultTolerationSeconds：此准入控制器将 Pod 的容忍时间 `notready:NoExecute` 和 `unreachable:NoExecut`e 默认设置为 5 分钟。
+- PodSecurityPolicy：使用 Pod Security Policies 时必须开启。
+- NodeRestriction：限制 kubelet 仅可访问 node、endpoint、pod、service 以及 secret、configmap、PV 和 PVC 等相关的资源（仅适用于 v1.7+）
 - EventRateLimit (alpha)：此准入控制器缓解了 API Server 被事件请求淹没的问题，限制时间速率。
-- ExtendedResourceToleration：此插件有助于创建具有扩展资源的专用节点。
-
+- ExtendedResourceToleration：为使用扩展资源（如 GPU 和 FPGA 等）的 Pod 自动添加 `tolerations`。
+- StorageProtection：自动给新创建的 PVC 增加 `kubernetes.io/pvc-protection` finalizer（v1.9 及以前版本为 `PVCProtection`，v.11 GA）
 - Initializers (alpha)：Pod初始化的准入控制器，详情请参考动态准入控制。
 - LimitPodHardAntiAffinityTopology：此准入控制器拒绝任何在 requiredDuringSchedulingRequiredDuringExecution 的 AntiAffinity 字段中定义除了kubernetes.io/hostname 之外的拓扑关键字的 pod 。
-- LimitRanger：此准入控制器将确保所有资源请求不会超过 namespace 的 LimitRange。
-- MutatingAdmissionWebhook （1.9版本中为beta）：该准入控制器调用与请求匹配的任何变更 webhook。匹配的 webhook是串行调用的；如果需要，每个人都可以修改对象。
+- PersistentVolumeClaimResize：允许设置 `allowVolumeExpansion=true` 的 StorageClass 调整 PVC 大小（v1.11 Beta）
 - NamespaceAutoProvision：此准入控制器检查命名空间资源上的所有传入请求，并检查引用的命名空间是否存在。如果不存在就创建一个命名空间。
 - NamespaceExists：此许可控制器检查除 Namespace 其自身之外的命名空间资源上的所有请求。如果请求引用的命名空间不存在，则拒绝该请求。
-- NamespaceLifecycle：此准入控制器强制执行正在终止的命令空间中不能创建新对象，并确保Namespace拒绝不存在的请求。此准入控制器还防止缺失三个系统保留的命名空间default、kube-system、kube-public。
-- NodeRestriction：该准入控制器限制了 kubelet 可以修改的Node和Pod对象。
-- OwnerReferencesPermissionEnforcement：此准入控制器保护对metadata.ownerReferences对象的访问，以便只有对该对象具有“删除”权限的用户才能对其进行更改。
-- PodNodeSelector：此准入控制器通过读取命名空间注释和全局配置来限制可在命名空间内使用的节点选择器。
-- PodPreset：此准入控制器注入一个pod，其中包含匹配的PodPreset中指定的字段，详细信息见Pod Preset。
-- PodSecurityPolicy：此准入控制器用于创建和修改pod，并根据请求的安全上下文和可用的Pod安全策略确定是否应该允许它。
-- PodTolerationRestriction：此准入控制器首先验证容器的容忍度与其命名空间的容忍度之间是否存在冲突，并在存在冲突时拒绝该容器请求。
-- Priority：此控制器使用priorityClassName字段并填充优先级的整数值。如果未找到优先级，则拒绝Pod。
-- ResourceQuota：此准入控制器将观察传入请求并确保它不违反命名空间的ResourceQuota对象中列举的任何约束。
-- SecurityContextDeny：此准入控制器将拒绝任何试图设置某些升级的SecurityContext字段的pod 。
-- ServiceAccount：此准入控制器实现serviceAccounts的自动化。
-用中的存储对象保护：该StorageObjectInUseProtection插件将kubernetes.io/pvc-protection或kubernetes.io/pv-protection终结器添加到新创建的持久卷声明（PVC）或持久卷（PV）。在用户删除PVC或PV的情况下，PVC或PV不会被移除，直到PVC或PV保护控制器从PVC或PV中移除终结器。有关更多详细信息，请参阅使用中的存储对象保护。
-- ValidatingAdmissionWebhook（1.8版本中为alpha；1.9版本中为beta）：该准入控制器调用与请求匹配的任何验证webhook。匹配的webhooks是并行调用的；如果其中任何一个拒绝请求，则请求失败。
+- PodNodeSelector：限制一个 Namespace 中可以使用的 Node 选择标签。
+- ValidatingAdmissionWebhook：使用 Webhook 验证请求，这些 Webhook 并行调用，并且任何一个调用拒绝都会导致请求失败。
+- MutatingAdmissionWebhook：使用 Webhook 修改请求，这些 Webhook 依次顺序调用。
+
+
+
+## 动态准入控制器
+标准的，插件化的 admission controller 对于大多数用户来说还不够灵活：
+- 需要把它编译到 `kube-apiserver` 二进制文件中
+- 只能在启动时进行配置
+
+1.7 引入了2个alpha的功能，Initializers 和 `GenericAdmissionWebhook` 来解决这些限制。
+
+### Initializers
+
+### GenericAdmissionWebhook
 
 ## 推荐配置
 ### Kubernetes 1.10+

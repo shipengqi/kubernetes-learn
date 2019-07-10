@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+
+    <title>Kubernetes learning | Kubernetes 核心组件 </title>
+    <meta name="description" content>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+
+    <!-- fonts -->
+    <link href="//fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+    <link href="//fonts.googleapis.com/css?family=Ubuntu:300,400,500,600,700" rel="stylesheet">
+
+    <!-- stylesheets -->
+    <link rel="stylesheet" href="/kubernetes-learn/style/doc.css">
+
+    <!-- favicon -->
+    <link rel="icon" href="/kubernetes-learn/images/favicon.ico">
+
+    
+
+  </head>
+  <body>
+
+   <script>window.__INITIAL_STATE__ = {"page":{"title":"Kubernetes 核心组件","path":"components/README.html"},"data":{"navigation":{"logo":{"text":"Kubernetes Learn","type":"link","path":"index.html"},"main":[{"text":"核心组件","type":"label"},{"text":"Kubernetes 核心组件","type":"link","path":"components/README.html"},{"text":"ETCD","type":"link","path":"components/etcd.html"},{"text":"kube-apiserver","type":"link","path":"components/apiserver.html"},{"text":"kube-scheduler","type":"link","path":"components/scheduler.html"},{"text":"kube-controller-manager","type":"link","path":"components/controller-manager.html"},{"text":"kubelet","type":"link","path":"components/kubelet.html"},{"text":"kube-proxy","type":"link","path":"components/proxy.html"},{"text":"kube-dns","type":"link","path":"components/dns.html"},{"text":"kubectl","type":"link","path":"components/kubectl.html"},{"text":"Federation","type":"link","path":"components/federation.html"},{"text":"Pod","type":"label"},{"text":"Pod 简介","type":"link","path":"pod/README.html"},{"text":"Pod 生命周期","type":"link","path":"pod/lifecycle.html"},{"text":"Init 容器","type":"link","path":"pod/init.html"},{"text":"Pod 安全策略","type":"link","path":"pod/pod-security-policy.html"},{"text":"Pod Preset","type":"link","path":"pod/pod-preset.html"},{"text":"Pod 中断与 PDB","type":"link","path":"pod/pdb.html"},{"text":"集群资源管理","type":"label"},{"text":"Node","type":"link","path":"cluster/node.html"},{"text":"Namespace","type":"link","path":"cluster/namespace.html"},{"text":"Label","type":"link","path":"cluster/label.html"},{"text":"Annotation","type":"link","path":"cluster/annotation.html"},{"text":"Taints 和 tolerations","type":"link","path":"cluster/taint.html"},{"text":"垃圾收集","type":"link","path":"cluster/garbage-collection.html"},{"text":"控制器","type":"label"},{"text":"Deployment","type":"link","path":"controller/deployment.html"},{"text":"StatefulSet","type":"link","path":"controller/stateful-set.html"},{"text":"DaemonSet","type":"link","path":"controller/daemon-set.html"},{"text":"ReplicaSet","type":"link","path":"controller/rc-rs.html"},{"text":"Job","type":"link","path":"controller/job.html"},{"text":"CronJob","type":"link","path":"controller/cron-job.html"},{"text":"Horizontal Pod Autoscaling","type":"link","path":"controller/hpa.html"},{"text":"准入控制","type":"link","path":"controller/admission.html"},{"text":"服务发现","type":"label"},{"text":"Service","type":"link","path":"service-discovery/service.html"},{"text":"Ingress","type":"link","path":"service-discovery/ingress.html"},{"text":"身份与权限","type":"label"},{"text":"身份与权限控制","type":"link","path":"auth/README.html"},{"text":"认证","type":"link","path":"auth/authentication.html"},{"text":"授权","type":"link","path":"auth/authorization.html"},{"text":"Service Account","type":"link","path":"auth/service-account.html"},{"text":"RBAC","type":"link","path":"auth/rbac.html"},{"text":"STORAGE","type":"label"},{"text":"Secret","type":"link","path":"storage/secret.html"},{"text":"ConfigMap","type":"link","path":"storage/configmap.html"},{"text":"Volume","type":"link","path":"storage/volume.html"},{"text":"Persistent Volume","type":"link","path":"storage/pv.html"},{"text":"StorageClass","type":"link","path":"storage/storageclass.html"},{"text":"THEME","type":"label"},{"text":"使用文档主题","type":"link","path":"theme/theme-usage.html"},{"text":"SUPPORT AND FEEDBACK","type":"label"},{"text":"Raise an Issue on Github","type":"link","path":"https://github.com/shipengqi/kubernetes-learn/issues/new"}]}},"config":{"timezone":"UTC","root":"/kubernetes-learn/","time_format":"HH:mm:ss","theme":"../node_modules/hexo-theme-doc","theme_config":{"swagger_ui":{"version":2,"permalinks":true,"api_explorer":true,"download":"Download specification","show_extensions":false,"deep_linking":true,"display_operation_id":false,"doc_expansion":"none"},"search":{"skip":false,"background":false,"route":"/lunr.json"},"favicon":"images/favicon.ico"}}}</script>
+
+    <div id="react-navigation-root"><div class="doc-navigation" data-reactroot><nav class="doc-navbar"><a href="/kubernetes-learn/index.html" class="doc-navbar__logo"><img src="/kubernetes-learn/images/logo.png" class="doc-navbar__logo__img"><span class="doc-navbar__logo__text">Kubernetes Learn</span></a><i class="dc-icon dc-icon--close dc-icon--interactive doc-sidebar-close doc-navbar__sidebar-close doc-navbar__sidebar-close--desktop"></i><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-navbar__sidebar-toggle"></i></nav><nav class="doc-sidebar"><div class="doc-sidebar__vertical-menu"><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-sidebar-toggle--primary doc-sidebar__vertical-menu__item"></i><i class="dc-icon dc-icon--search dc-icon--interactive doc-sidebar__vertical-menu__item doc-sidebar__vertical-menu__item--primary"></i></div><div class="doc-sidebar-content"><div class="doc-sidebar__search-form"></div><ul class="doc-sidebar-list"></ul></div></nav></div></div>
+    <div class="doc-content">
+  <div class="dc-page">
+    <div class="dc-card">
+      <div id="react-search-results-root"></div>
+      <div id="page-content" class="doc-formatting">
+        <h1 id="Kubernetes-核心组件"><a href="#Kubernetes-核心组件" class="headerlink" title="Kubernetes 核心组件"></a>Kubernetes 核心组件</h1><p>Kubernetes 主要由以下几个核心组件组成：</p>
+<ul>
+<li><code>etcd</code> 保存了整个集群的状态；</li>
+<li><code>apiserver</code> 提供了资源操作的唯一入口，并提供认证、授权、访问控制、API 注册和发现等机制；</li>
+<li><code>controller manager</code> 负责维护集群的状态，比如故障检测、自动扩展、滚动更新等；</li>
+<li><code>scheduler</code> 负责资源的调度，按照预定的调度策略将 Pod 调度到相应的机器上；</li>
+<li><code>kubelet</code> 负责维护容器的生命周期，同时也负责 Volume（CVI）和网络（CNI）的管理；</li>
+<li>Container runtime 负责镜像管理以及 Pod 和容器的真正运行（CRI）；</li>
+<li><code>kube-proxy</code> 负责为 Service 提供 cluster 内部的服务发现和负载均衡</li>
+</ul>
+<p>除了核心组件，还有一些推荐的 Add-ons：</p>
+<ul>
+<li>CoreDNS 负责为整个集群提供DNS服务（也可以使用 <code>kube-dns</code>，更推荐使用 CoreDNS）</li>
+<li>Ingress Controller 为服务提供外网入口</li>
+<li>Prometheus 提供资源监控 （Heapster 不建议使用，将被弃用）</li>
+<li>Dashboard 提供 GUI</li>
+<li>Federation 提供跨可用区的集群</li>
+<li>Fluentd-elasticsearch 提供集群日志采集、存储与查询</li>
+</ul>
+<h2 id="组件通信"><a href="#组件通信" class="headerlink" title="组件通信"></a>组件通信</h2><p>多组件之间的通信原理为：</p>
+<ul>
+<li><code>apiserver</code> 负责操作 <code>etcd</code>，且只有 <code>apiserver</code> 才直接操作 <code>etcd</code> 集群</li>
+<li><code>apiserver</code> 对内（集群中的其他组件）和对外（用户）提供统一的 REST API，其他组件均通过 <code>apiserver</code> 进行通信<ul>
+<li>controller manager、<code>scheduler</code>、<code>kube-proxy</code> 和 <code>kubelet</code> 等均通过 apiserver watch API 监测资源变化情况，并对资源作相应的操作</li>
+<li>所有需要更新资源状态的操作均通过 <code>apiserver</code> 的 REST API 进行</li>
+</ul>
+</li>
+<li><code>apiserver</code> 也会直接调用 <code>kubelet</code> API（如 <code>logs</code>, <code>exec</code>, <code>attach</code> 等），默认不校验 <code>kubelet</code> 证书，但可以通过 <code>--kubelet-certificate-authority</code><br>开启（而 GKE 通过 SSH 隧道保护它们之间的通信）</li>
+</ul>
+<p>典型的创建 Pod 的流程为：</p>
+<p><img src="../imgs/create-pod-workflow.png" alt="create-pod-workflow"></p>
+<h2 id="端口号"><a href="#端口号" class="headerlink" title="端口号"></a>端口号</h2><p><img src="../imgs/components-ports.png" alt="components-ports"></p>
+
+        <div id="react-support-footer-root"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+
+    
+
+    <!-- js vendors -->
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lunr.js/2.1.0/lunr.min.js"></script>
+
+    <!-- js source  -->
+    <script src="/kubernetes-learn/script/doc.js"></script>
+
+    
+
+  </body>
+</html>

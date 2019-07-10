@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+
+    <title>Kubernetes learning | Pod 中断与 PDB </title>
+    <meta name="description" content>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+
+    <!-- fonts -->
+    <link href="//fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+    <link href="//fonts.googleapis.com/css?family=Ubuntu:300,400,500,600,700" rel="stylesheet">
+
+    <!-- stylesheets -->
+    <link rel="stylesheet" href="/kubernetes-learn/style/doc.css">
+
+    <!-- favicon -->
+    <link rel="icon" href="/kubernetes-learn/images/favicon.ico">
+
+    
+
+  </head>
+  <body>
+
+   <script>window.__INITIAL_STATE__ = {"page":{"title":"Pod 中断与 PDB","path":"pod/pdb.html"},"data":{"navigation":{"logo":{"text":"Kubernetes Learn","type":"link","path":"index.html"},"main":[{"text":"核心组件","type":"label"},{"text":"Kubernetes 核心组件","type":"link","path":"components/README.html"},{"text":"ETCD","type":"link","path":"components/etcd.html"},{"text":"kube-apiserver","type":"link","path":"components/apiserver.html"},{"text":"kube-scheduler","type":"link","path":"components/scheduler.html"},{"text":"kube-controller-manager","type":"link","path":"components/controller-manager.html"},{"text":"kubelet","type":"link","path":"components/kubelet.html"},{"text":"kube-proxy","type":"link","path":"components/proxy.html"},{"text":"kube-dns","type":"link","path":"components/dns.html"},{"text":"kubectl","type":"link","path":"components/kubectl.html"},{"text":"Federation","type":"link","path":"components/federation.html"},{"text":"Pod","type":"label"},{"text":"Pod 简介","type":"link","path":"pod/README.html"},{"text":"Pod 生命周期","type":"link","path":"pod/lifecycle.html"},{"text":"Init 容器","type":"link","path":"pod/init.html"},{"text":"Pod 安全策略","type":"link","path":"pod/pod-security-policy.html"},{"text":"Pod Preset","type":"link","path":"pod/pod-preset.html"},{"text":"Pod 中断与 PDB","type":"link","path":"pod/pdb.html"},{"text":"集群资源管理","type":"label"},{"text":"Node","type":"link","path":"cluster/node.html"},{"text":"Namespace","type":"link","path":"cluster/namespace.html"},{"text":"Label","type":"link","path":"cluster/label.html"},{"text":"Annotation","type":"link","path":"cluster/annotation.html"},{"text":"Taints 和 tolerations","type":"link","path":"cluster/taint.html"},{"text":"垃圾收集","type":"link","path":"cluster/garbage-collection.html"},{"text":"控制器","type":"label"},{"text":"Deployment","type":"link","path":"controller/deployment.html"},{"text":"StatefulSet","type":"link","path":"controller/stateful-set.html"},{"text":"DaemonSet","type":"link","path":"controller/daemon-set.html"},{"text":"ReplicaSet","type":"link","path":"controller/rc-rs.html"},{"text":"Job","type":"link","path":"controller/job.html"},{"text":"CronJob","type":"link","path":"controller/cron-job.html"},{"text":"Horizontal Pod Autoscaling","type":"link","path":"controller/hpa.html"},{"text":"准入控制","type":"link","path":"controller/admission.html"},{"text":"服务发现","type":"label"},{"text":"Service","type":"link","path":"service-discovery/service.html"},{"text":"Ingress","type":"link","path":"service-discovery/ingress.html"},{"text":"身份与权限","type":"label"},{"text":"身份与权限控制","type":"link","path":"auth/README.html"},{"text":"认证","type":"link","path":"auth/authentication.html"},{"text":"授权","type":"link","path":"auth/authorization.html"},{"text":"Service Account","type":"link","path":"auth/service-account.html"},{"text":"RBAC","type":"link","path":"auth/rbac.html"},{"text":"STORAGE","type":"label"},{"text":"Secret","type":"link","path":"storage/secret.html"},{"text":"ConfigMap","type":"link","path":"storage/configmap.html"},{"text":"Volume","type":"link","path":"storage/volume.html"},{"text":"Persistent Volume","type":"link","path":"storage/pv.html"},{"text":"StorageClass","type":"link","path":"storage/storageclass.html"},{"text":"THEME","type":"label"},{"text":"使用文档主题","type":"link","path":"theme/theme-usage.html"},{"text":"SUPPORT AND FEEDBACK","type":"label"},{"text":"Raise an Issue on Github","type":"link","path":"https://github.com/shipengqi/kubernetes-learn/issues/new"}]}},"config":{"timezone":"UTC","root":"/kubernetes-learn/","time_format":"HH:mm:ss","theme":"../node_modules/hexo-theme-doc","theme_config":{"swagger_ui":{"version":2,"permalinks":true,"api_explorer":true,"download":"Download specification","show_extensions":false,"deep_linking":true,"display_operation_id":false,"doc_expansion":"none"},"search":{"skip":false,"background":false,"route":"/lunr.json"},"favicon":"images/favicon.ico"}}}</script>
+
+    <div id="react-navigation-root"><div class="doc-navigation" data-reactroot><nav class="doc-navbar"><a href="/kubernetes-learn/index.html" class="doc-navbar__logo"><img src="/kubernetes-learn/images/logo.png" class="doc-navbar__logo__img"><span class="doc-navbar__logo__text">Kubernetes Learn</span></a><i class="dc-icon dc-icon--close dc-icon--interactive doc-sidebar-close doc-navbar__sidebar-close doc-navbar__sidebar-close--desktop"></i><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-navbar__sidebar-toggle"></i></nav><nav class="doc-sidebar"><div class="doc-sidebar__vertical-menu"><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-sidebar-toggle--primary doc-sidebar__vertical-menu__item"></i><i class="dc-icon dc-icon--search dc-icon--interactive doc-sidebar__vertical-menu__item doc-sidebar__vertical-menu__item--primary"></i></div><div class="doc-sidebar-content"><div class="doc-sidebar__search-form"></div><ul class="doc-sidebar-list"></ul></div></nav></div></div>
+    <div class="doc-content">
+  <div class="dc-page">
+    <div class="dc-card">
+      <div id="react-search-results-root"></div>
+      <div id="page-content" class="doc-formatting">
+        <h1 id="Pod-中断与-PDB（Pod-中断预算）"><a href="#Pod-中断与-PDB（Pod-中断预算）" class="headerlink" title="Pod 中断与 PDB（Pod 中断预算）"></a>Pod 中断与 PDB（Pod 中断预算）</h1><p>Pod 不会消失，直到有人（人类或控制器）将其销毁，或者当出现不可避免的硬件或系统软件错误。我们把这些不可避免的情况称为应用的<strong>非自愿性中断</strong>。例如：</p>
+<ul>
+<li>后端节点物理机的硬件故障</li>
+<li>集群管理员错误地删除虚拟机（实例）</li>
+<li>云提供商或管理程序故障使虚拟机消失</li>
+<li>内核恐慌（kernel panic）</li>
+<li>节点由于集群网络分区而从集群中消失</li>
+<li>由于节点资源不足而将容器逐出</li>
+</ul>
+<p>下面这些情况为<strong>自愿中断</strong>，包括由应用程序所有者发起的操作和由集群管理员发起的操作。应用程序所有者操作包括：</p>
+<ul>
+<li>删除管理该 pod 的 Deployment 或其他控制器</li>
+<li>更新了 Deployment 的 pod 模板导致 pod 重启</li>
+<li>直接删除 pod（意外删除）</li>
+</ul>
+<p>集群管理员操作包括：</p>
+<ul>
+<li><a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/" target="_blank" rel="noopener">排空（drain）节点</a>进行修复或升级。</li>
+<li>从集群中排空节点以缩小集群（了解集群自动调节）。</li>
+<li>从节点中移除一个 pod，以允许其他 pod 使用该节点。</li>
+</ul>
+<h2 id="处理中断"><a href="#处理中断" class="headerlink" title="处理中断"></a>处理中断</h2><p>一些减轻非自愿性中断的方法：</p>
+<ul>
+<li>确保 pod 请求所需的资源。</li>
+<li>为了更高的可用性，复制你的应用程序。</li>
+<li>为了在运行复制应用程序时获得更高的可用性，请跨机架<br>（使用<a href="https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#inter-pod-affinity-and-anti-affinity-beta-feature" target="_blank" rel="noopener">反亲和性</a>）或<br>跨区域（如果使用<a href="https://kubernetes.io/docs/setup/best-practices/multiple-zones/" target="_blank" rel="noopener">多区域集群</a>）分布应用程序。</li>
+</ul>
+<h2 id="中断预算的工作原理"><a href="#中断预算的工作原理" class="headerlink" title="中断预算的工作原理"></a>中断预算的工作原理</h2><p>应用程序所有者可以为每个应用程序创建一个 PodDisruptionBudget 对象（PDB）。 PDB 将限制在同一时间自愿中断的宕机的 Pod 的数量。</p>
+<p>集群管理器和托管提供商应使用遵循 Pod Disruption Budgets 的工具，方法是调<br>用 <a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/#the-eviction-api" target="_blank" rel="noopener">Eviction API</a> 而不是直接删除 Pod。<br>例如 <code>kubectl drain</code> 命令和 <code>Kubernetes-on-GCE</code> 集群升级脚本（<code>cluster/gce/upgrade.sh</code>）。</p>
+<p>当集群管理员想要排空节点时，可以使用 <code>kubectl drain</code> 命令。该命令会试图驱逐机器上的所有 pod。驱逐请求可能会暂时被拒绝，并且该工具会定期重试所有失败的请求，直<br>到所有的 pod 都被终止，或者直到达到配置的超时时间。</p>
+<h2 id="PDB-示例"><a href="#PDB-示例" class="headerlink" title="PDB 示例"></a>PDB 示例</h2><p>假设集群有 3 个节点，<code>node-1</code> 到 <code>node-3</code>。集群中运行了一些应用，其中一个应用有 3 个副本，分别是 <code>pod-a</code>、<code>pod-b</code> 和 <code>pod-c</code>。另外，还有一个与它相关的不<br>具有 PDB 的 pod，我们称为之为 <code>pod-x</code>。最初，所有 Pod 的分布如下：</p>
+<table>
+<thead>
+<tr>
+<th>node-1</th>
+<th>node-2</th>
+<th>node-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pod-a available</td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+</tr>
+<tr>
+<td>pod-x available</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>所有的3个 pod 都是 Deployment 中的一部分，并且它们共同拥有一个 PDB，要求至少有3个 pod 中的2个始终处于可用状态。</p>
+<p>例如，假设集群管理员想要重启系统，升级内核版本来修复内核中的错误。集群管理员首先使用 <code>kubectl drain</code> 命令尝试排除 <code>node-1</code>。该工具试图驱逐 <code>pod-a</code> 和 <code>pod-x</code>。这立即成功。<br>两个 Pod 同时进入终止状态。这时的集群处于这种状态：</p>
+<table>
+<thead>
+<tr>
+<th>node-1</th>
+<th>node-2</th>
+<th>node-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pod-a terminating</td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+</tr>
+<tr>
+<td>pod-x terminating</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Deployment 注意到其中有一个 pod 处于正在终止，因此会创建了一个 <code>pod-d</code> 来替换。由于 <code>node-1</code> 被封锁（cordon），它落在另一个节点上。同时其它控制器也创建了 <code>pod-y</code> 作为 <code>pod-x</code> 的替代品。</p>
+<p>当前集群的状态如下：</p>
+<table>
+<thead>
+<tr>
+<th>node-1</th>
+<th>node-2</th>
+<th>node-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pod-a terminating</td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+</tr>
+<tr>
+<td>pod-x terminating</td>
+<td>pod-d starting</td>
+<td>pod-y</td>
+</tr>
+</tbody>
+</table>
+<p>在某一时刻，pod 被终止，集群看起来像下面这样子：</p>
+<table>
+<thead>
+<tr>
+<th>node-1 drained</th>
+<th>node-2</th>
+<th>node-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+</tr>
+<tr>
+<td></td>
+<td>pod-d starting</td>
+<td>pod-y</td>
+</tr>
+</tbody>
+</table>
+<p>此时，如果一个急躁的集群管理员试图排空（drain）<code>node-2</code> 或 <code>node-3</code>，drain 命令将被阻塞，因为对于 Deployment 只有2个可用的 pod，并且其 PDB 至少需要2个。<br>经过一段时间，<code>pod-d</code> 变得可用。</p>
+<table>
+<thead>
+<tr>
+<th>node-1 drained</th>
+<th>node-2</th>
+<th>node-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+</tr>
+<tr>
+<td></td>
+<td>pod-d available</td>
+<td>pod-y</td>
+</tr>
+</tbody>
+</table>
+<p>现在，集群管理员尝试排空 <code>node-2</code>。drain 命令将尝试按照某种顺序驱逐两个 pod，假设先是 <code>pod-b</code>，然后再 <code>pod-d</code>。它将成功驱逐 <code>pod-b</code>。但是，当它试图驱逐 <code>pod-d</code> 时，<br>将被拒绝，因为这样对 Deployment 来说将只剩下一个可用的 pod。</p>
+<p>Deployment 将创建一个名为 <code>pod-e</code> 的 <code>pod-b</code> 的替代品。但是，集群中没有足够的资源来安排 <code>pod-e</code>。那么，<code>drain</code> 命令就会被阻塞。集群最终可能是这种状态：</p>
+<table>
+<thead>
+<tr>
+<th>node-1 drained</th>
+<th>node-2</th>
+<th>node-3</th>
+<th>no node</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td>pod-b available</td>
+<td>pod-c available</td>
+<td>pod-e pending</td>
+</tr>
+<tr>
+<td></td>
+<td>pod-d available</td>
+<td>pod-y</td>
+</tr>
+</tbody>
+</table>
+<p>此时，集群管理员需要向集群中添加回一个节点以继续升级操作。</p>
+<p>可以看到 Kubernetes 如何改变中断发生的速率，根据：</p>
+<ul>
+<li>应用程序需要多少副本</li>
+<li>正常关闭实例需要多长时间</li>
+<li>启动新实例需要多长时间</li>
+<li>控制器的类型</li>
+<li>集群的资源能力</li>
+</ul>
+<h2 id="如何在集群上执行中断操作"><a href="#如何在集群上执行中断操作" class="headerlink" title="如何在集群上执行中断操作"></a>如何在集群上执行中断操作</h2><p>如果是集群管理员，要对集群的所有节点执行中断操作，例如节点或系统软件升级，则可以使用以下选择：</p>
+<ul>
+<li>在升级期间接受停机时间。</li>
+<li>故障转移到另一个完整的副本集群。<ul>
+<li>没有停机时间，但是对于重复的节点和人工协调成本可能是昂贵的。</li>
+</ul>
+</li>
+<li>编写可容忍中断的应用程序和使用 PDB。<ul>
+<li>没有停机时间。</li>
+<li>最小的资源重复。</li>
+<li>允许更多的集群管理自动化。</li>
+<li>编写可容忍中断的应用程序是很棘手的，但对于可容忍自愿中断，和支持自动调整以容忍非自愿中断，两者在工作上有大量的重叠。</li>
+</ul>
+</li>
+</ul>
+
+        <div id="react-support-footer-root"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+
+    
+
+    <!-- js vendors -->
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lunr.js/2.1.0/lunr.min.js"></script>
+
+    <!-- js source  -->
+    <script src="/kubernetes-learn/script/doc.js"></script>
+
+    
+
+  </body>
+</html>

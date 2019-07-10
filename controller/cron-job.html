@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="utf-8">
+
+    <title>Kubernetes learning | CronJob </title>
+    <meta name="description" content>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    
+
+    <!-- fonts -->
+    <link href="//fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+    <link href="//fonts.googleapis.com/css?family=Ubuntu:300,400,500,600,700" rel="stylesheet">
+
+    <!-- stylesheets -->
+    <link rel="stylesheet" href="/kubernetes-learn/style/doc.css">
+
+    <!-- favicon -->
+    <link rel="icon" href="/kubernetes-learn/images/favicon.ico">
+
+    
+
+  </head>
+  <body>
+
+   <script>window.__INITIAL_STATE__ = {"page":{"title":"CronJob","path":"controller/cron-job.html"},"data":{"navigation":{"logo":{"text":"Kubernetes Learn","type":"link","path":"index.html"},"main":[{"text":"核心组件","type":"label"},{"text":"Kubernetes 核心组件","type":"link","path":"components/README.html"},{"text":"ETCD","type":"link","path":"components/etcd.html"},{"text":"kube-apiserver","type":"link","path":"components/apiserver.html"},{"text":"kube-scheduler","type":"link","path":"components/scheduler.html"},{"text":"kube-controller-manager","type":"link","path":"components/controller-manager.html"},{"text":"kubelet","type":"link","path":"components/kubelet.html"},{"text":"kube-proxy","type":"link","path":"components/proxy.html"},{"text":"kube-dns","type":"link","path":"components/dns.html"},{"text":"kubectl","type":"link","path":"components/kubectl.html"},{"text":"Federation","type":"link","path":"components/federation.html"},{"text":"Pod","type":"label"},{"text":"Pod 简介","type":"link","path":"pod/README.html"},{"text":"Pod 生命周期","type":"link","path":"pod/lifecycle.html"},{"text":"Init 容器","type":"link","path":"pod/init.html"},{"text":"Pod 安全策略","type":"link","path":"pod/pod-security-policy.html"},{"text":"Pod Preset","type":"link","path":"pod/pod-preset.html"},{"text":"Pod 中断与 PDB","type":"link","path":"pod/pdb.html"},{"text":"集群资源管理","type":"label"},{"text":"Node","type":"link","path":"cluster/node.html"},{"text":"Namespace","type":"link","path":"cluster/namespace.html"},{"text":"Label","type":"link","path":"cluster/label.html"},{"text":"Annotation","type":"link","path":"cluster/annotation.html"},{"text":"Taints 和 tolerations","type":"link","path":"cluster/taint.html"},{"text":"垃圾收集","type":"link","path":"cluster/garbage-collection.html"},{"text":"控制器","type":"label"},{"text":"Deployment","type":"link","path":"controller/deployment.html"},{"text":"StatefulSet","type":"link","path":"controller/stateful-set.html"},{"text":"DaemonSet","type":"link","path":"controller/daemon-set.html"},{"text":"ReplicaSet","type":"link","path":"controller/rc-rs.html"},{"text":"Job","type":"link","path":"controller/job.html"},{"text":"CronJob","type":"link","path":"controller/cron-job.html"},{"text":"Horizontal Pod Autoscaling","type":"link","path":"controller/hpa.html"},{"text":"准入控制","type":"link","path":"controller/admission.html"},{"text":"服务发现","type":"label"},{"text":"Service","type":"link","path":"service-discovery/service.html"},{"text":"Ingress","type":"link","path":"service-discovery/ingress.html"},{"text":"身份与权限","type":"label"},{"text":"身份与权限控制","type":"link","path":"auth/README.html"},{"text":"认证","type":"link","path":"auth/authentication.html"},{"text":"授权","type":"link","path":"auth/authorization.html"},{"text":"Service Account","type":"link","path":"auth/service-account.html"},{"text":"RBAC","type":"link","path":"auth/rbac.html"},{"text":"STORAGE","type":"label"},{"text":"Secret","type":"link","path":"storage/secret.html"},{"text":"ConfigMap","type":"link","path":"storage/configmap.html"},{"text":"Volume","type":"link","path":"storage/volume.html"},{"text":"Persistent Volume","type":"link","path":"storage/pv.html"},{"text":"StorageClass","type":"link","path":"storage/storageclass.html"},{"text":"THEME","type":"label"},{"text":"使用文档主题","type":"link","path":"theme/theme-usage.html"},{"text":"SUPPORT AND FEEDBACK","type":"label"},{"text":"Raise an Issue on Github","type":"link","path":"https://github.com/shipengqi/kubernetes-learn/issues/new"}]}},"config":{"timezone":"UTC","root":"/kubernetes-learn/","time_format":"HH:mm:ss","theme":"../node_modules/hexo-theme-doc","theme_config":{"swagger_ui":{"version":2,"permalinks":true,"api_explorer":true,"download":"Download specification","show_extensions":false,"deep_linking":true,"display_operation_id":false,"doc_expansion":"none"},"search":{"skip":false,"background":false,"route":"/lunr.json"},"favicon":"images/favicon.ico"}}}</script>
+
+    <div id="react-navigation-root"><div class="doc-navigation" data-reactroot><nav class="doc-navbar"><a href="/kubernetes-learn/index.html" class="doc-navbar__logo"><img src="/kubernetes-learn/images/logo.png" class="doc-navbar__logo__img"><span class="doc-navbar__logo__text">Kubernetes Learn</span></a><i class="dc-icon dc-icon--close dc-icon--interactive doc-sidebar-close doc-navbar__sidebar-close doc-navbar__sidebar-close--desktop"></i><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-navbar__sidebar-toggle"></i></nav><nav class="doc-sidebar"><div class="doc-sidebar__vertical-menu"><i class="dc-icon dc-icon--menu dc-icon--interactive doc-sidebar-toggle doc-sidebar-toggle--primary doc-sidebar__vertical-menu__item"></i><i class="dc-icon dc-icon--search dc-icon--interactive doc-sidebar__vertical-menu__item doc-sidebar__vertical-menu__item--primary"></i></div><div class="doc-sidebar-content"><div class="doc-sidebar__search-form"></div><ul class="doc-sidebar-list"></ul></div></nav></div></div>
+    <div class="doc-content">
+  <div class="dc-page">
+    <div class="dc-card">
+      <div id="react-search-results-root"></div>
+      <div id="page-content" class="doc-formatting">
+        <h1 id="CronJob"><a href="#CronJob" class="headerlink" title="CronJob"></a>CronJob</h1><p>CronJob 即定时任务，管理基于时间的 <a href="./job.html">Job</a>，类似于 Linux 系统的 crontab，在指定的时间周期运行指定的任务。</p>
+<h2 id="开启-CronJob"><a href="#开启-CronJob" class="headerlink" title="开启 CronJob"></a>开启 CronJob</h2><p>对于小于 1.8 的版本，需要在启动 API Server 时，通过传递选项 <code>--runtime-config=batch/v2alpha1=true</code> 可以开启 <code>batch/v2alpha1</code> API。<br>大于 1.8 的版本可以直接使用。</p>
+<h2 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h2><ul>
+<li>在给定的时间点调度 Job 运行</li>
+<li>创建周期性运行的 Job，例如：数据库备份、发送邮件。</li>
+</ul>
+<h2 id="CronJob-Spec"><a href="#CronJob-Spec" class="headerlink" title="CronJob Spec"></a>CronJob Spec</h2><ul>
+<li><code>.spec.jobTemplate</code> 指定需要运行的任务，格式同 <a href="./job.html">Job</a></li>
+<li><code>.spec.schedule</code> 指定任务运行周期，格式同 <a href="https://en.wikipedia.org/wiki/Cron" target="_blank" rel="noopener">Cron</a></li>
+<li><code>.spec.startingDeadlineSeconds</code> 指定任务启动的期限</li>
+<li><code>.spec.concurrencyPolicy</code> 指定任务的并发策略，支持 Allow、Forbid 和 Replace 三个选项</li>
+</ul>
+<p><code>cronjob.yaml</code>：<br><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">batch/v1beta1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">CronJob</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">hello</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line"><span class="attr">  schedule:</span> <span class="string">"*/1 * * * *"</span></span><br><span class="line"><span class="attr">  jobTemplate:</span></span><br><span class="line"><span class="attr">    spec:</span></span><br><span class="line"><span class="attr">      template:</span></span><br><span class="line"><span class="attr">        spec:</span></span><br><span class="line"><span class="attr">          containers:</span></span><br><span class="line"><span class="attr">          - name:</span> <span class="string">hello</span></span><br><span class="line"><span class="attr">            image:</span> <span class="string">busybox</span></span><br><span class="line"><span class="attr">            args:</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">/bin/sh</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">-c</span></span><br><span class="line"><span class="bullet">            -</span> <span class="string">date;</span> <span class="string">echo</span> <span class="string">Hello</span> <span class="string">from</span> <span class="string">the</span> <span class="string">Kubernetes</span> <span class="string">cluster</span></span><br><span class="line"><span class="attr">          restartPolicy:</span> <span class="string">OnFailure</span></span><br></pre></td></tr></table></figure></p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 创建</span></span><br><span class="line">$ kubectl create -f cronjob.yaml</span><br><span class="line">cronjob <span class="string">"hello"</span> created</span><br><span class="line"></span><br><span class="line"><span class="comment"># 用 kubectl run 来创建 CronJob</span></span><br><span class="line">kubectl run hello --schedule=<span class="string">"*/1 * * * *"</span> --restart=OnFailure --image=busybox -- /bin/sh -c <span class="string">"date; echo Hello from the Kubernetes cluster"</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看</span></span><br><span class="line">$ kubectl get cronjob</span><br><span class="line">NAME      SCHEDULE      SUSPEND   ACTIVE    LAST-SCHEDULE</span><br><span class="line">hello     */1 * * * *   False     0         &lt;none&gt;</span><br><span class="line">$ kubectl get <span class="built_in">jobs</span></span><br><span class="line">NAME               DESIRED   SUCCESSFUL   AGE</span><br><span class="line">hello-1202039034   1         1            49s</span><br><span class="line">$ pods=$(kubectl get pods --selector=job-name=hello-1202039034 --output=jsonpath=&#123;.items..metadata.name&#125; -a)</span><br><span class="line">$ kubectl logs <span class="variable">$pods</span></span><br><span class="line">Mon Aug 29 21:34:09 UTC 2016</span><br><span class="line">Hello from the Kubernetes cluster</span><br><span class="line"></span><br><span class="line"><span class="comment"># 注意，删除 cronjob 的时候不会自动删除 job，这些 job 可以用 kubectl delete job 来删除</span></span><br><span class="line">$ kubectl delete cronjob hello</span><br><span class="line">cronjob <span class="string">"hello"</span> deleted</span><br></pre></td></tr></table></figure>
+<h2 id="Cron-Job-限制"><a href="#Cron-Job-限制" class="headerlink" title="Cron Job 限制"></a>Cron Job 限制</h2><h3 id="启动-Job-的期限（秒级别）"><a href="#启动-Job-的期限（秒级别）" class="headerlink" title="启动 Job 的期限（秒级别）"></a>启动 Job 的期限（秒级别）</h3><p><code>.spec.startingDeadlineSeconds</code> 字段是可选的。它表示启动 Job 的期限（秒级别），如果因为任何原因而错过了被调度的时间，那么错过执行时间的 Job 将被认为是失败的。如果没有指定，则没有期限。</p>
+<h3 id="并发策略"><a href="#并发策略" class="headerlink" title="并发策略"></a>并发策略</h3><p><code>.spec.concurrencyPolicy</code> 字段也是可选的。它指定了如何处理被 Cron Job 创建的 Job 的并发执行。只允许指定下面策略中的一种：</p>
+<ul>
+<li>Allow（默认）：允许并发运行 Job</li>
+<li>Forbid：禁止并发运行，如果前一个还没有完成，则直接跳过下一个</li>
+<li>Replace：取消当前正在运行的 Job，用一个新的来替换</li>
+</ul>
+<p>注意，当前策略只能应用于同一个 Cron Job 创建的 Job。如果存在多个 Cron Job，它们创建的 Job 之间总是允许并发运行。</p>
+<h3 id="挂起"><a href="#挂起" class="headerlink" title="挂起"></a>挂起</h3><p><code>.spec.suspend</code> 字段也是可选的。如果设置为 <code>true</code>，后续所有执行都将被挂起。它对已经开始执行的 Job 不起作用。默认值为 <code>false</code>。</p>
+<h3 id="Job-历史限制"><a href="#Job-历史限制" class="headerlink" title="Job 历史限制"></a>Job 历史限制</h3><p><code>.spec.successfulJobsHistoryLimit</code> 和 <code>.spec.failedJobsHistoryLimit</code> 这两个字段是可选的。它们指定了可以保留完成和失败 Job 数量的限制。</p>
+<p>默认没有限制，所有成功和失败的 Job 都会被保留。然而，当运行一个 Cron Job 时，很快就会堆积很多 Job，推荐设置这两个字段的值。<br>设置限制值为 0，相关类型的 Job 完成后将不会被保留。</p>
+
+        <div id="react-support-footer-root"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+
+    
+
+    <!-- js vendors -->
+    <script src="//code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lunr.js/2.1.0/lunr.min.js"></script>
+
+    <!-- js source  -->
+    <script src="/kubernetes-learn/script/doc.js"></script>
+
+    
+
+  </body>
+</html>

@@ -1,0 +1,5 @@
+---
+title: kubectl
+---
+
+# kubectl

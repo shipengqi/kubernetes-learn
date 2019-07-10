@@ -1,3 +1,7 @@
+---
+title: Kubernetes 核心组件
+---
+
 # Kubernetes 核心组件
 
 Kubernetes 主要由以下几个核心组件组成：

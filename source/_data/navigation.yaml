@@ -3,6 +3,39 @@ logo:
   type: link
   path: index.html
 main:
+- text: 核心组件
+  type: label
+- text: Kubernetes 核心组件
+  type: link
+  path: components/README.html
+- text: ETCD
+  type: link
+  path: components/etcd.html
+- text: kube-apiserver
+  type: link
+  path: components/apiserver.html
+- text: kube-scheduler
+  type: link
+  path: components/scheduler.html
+- text: kube-controller-manager
+  type: link
+  path: components/controller-manager.html
+- text: kubelet
+  type: link
+  path: components/kubelet.html
+- text: kube-proxy
+  type: link
+  path: components/proxy.html
+- text: kube-dns
+  type: link
+  path: components/dns.html
+- text: kubectl
+  type: link
+  path: components/kubectl.html
+- text: Federation
+  type: link
+  path: components/federation.html
+
 - text: Pod
   type: label
 - text: Pod 简介

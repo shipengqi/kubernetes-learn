@@ -17,7 +17,7 @@ Kubernetes 主要由以下几个核心组件组成：
 
 除了核心组件，还有一些推荐的 Add-ons：
 
-- CoreDNS 负责为整个集群提供DNS服务（也可以使用 `kube-dns`，更推荐使用 CoreDNS）
+- CoreDNS 负责为整个集群提供 DNS 服务（也可以使用 `kube-dns`，更推荐使用 CoreDNS）
 - Ingress Controller 为服务提供外网入口
 - Prometheus 提供资源监控 （Heapster 不建议使用，将被弃用）
 - Dashboard 提供 GUI

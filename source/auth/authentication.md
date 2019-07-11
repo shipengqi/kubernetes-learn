@@ -20,7 +20,8 @@ openssl x509 -req -in username.csr -CA $CA_LOCATION/ca.crt -CAkey $CA_LOCATION/c
 ```
 
 例如，目前我们的 kubernetes 集群就是 X509 证书认证并结合 RBAC。
-集群中 dashboard 组件访问 API server 就是使用的证书认证，证书的 CN 是 `k8s-dashboard-svc.core`，dashboard 的 pod 需要 `cluster-admin` 权限，所以
+
+集群中 dashboard 组件访问 API server 就是使用的证书认证，证书的 `CN` 是 `k8s-dashboard-svc.core`，dashboard 的 pod 需要 `cluster-admin` 权限，所以
 我们又为 dashboard 了 `ClusterRoleBinding`：
 ```yml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -97,5 +98,5 @@ OpenID 提供了 OAuth2 的认证机制，是很多云服务商（如 GCE、Azur
 
 ![](../imgs/oidc.png)
 
-参考[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication/index.html)
-和[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication2/index.html)
+参考[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication/index.html)和
+[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication2/index.html)

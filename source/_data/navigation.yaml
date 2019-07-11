@@ -35,6 +35,9 @@ main:
 - text: Federation
   type: link
   path: components/federation.html
+- text: hyperkube
+  type: link
+  path: components/hyperkube.html
 
 - text: Pod
   type: label
@@ -150,6 +153,12 @@ main:
 - text: StorageClass
   type: link
   path: storage/storageclass.html
+
+- text: 排错指南
+  type: label
+- text: 排错概览
+  type: link
+  path: debug/README.html
 
 - text: THEME
   type: label

@@ -355,7 +355,12 @@ spec:
   - hostPath:
       path: /opt/kubernetes/cfg/audit-policy.yaml
     name: audit-policy
+```
 
+上面的示例中由于 pod 的 user 是 `1999`，所以 `/var/log/kube-audit` 的 owner 也必须是 `1999`，否则可能会报 `permission denied`，像下面的错误：
+```sh
+kube-apiserver[1574]: E1105 18:43:54.090393 1574 metrics.go:86] Error in audit plugin 'log' affecting 1 audit
+ events: can't open new logfile: open /var/lib/audit.log: permission denied
 ```
 
 ### Webhook 后端

@@ -318,6 +318,46 @@ Log 后端将审计事件写入 JSON 格式的文件。使用以下 kube-apiserv
 - `--audit-log-maxbackup` 定义了要保留的审计日志文件的最大数量
 - `--audit-log-maxsize` 定义审计日志文件的最大大小（兆字节）
 
+Log 配置文件示例：
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: apiserver
+  namespace: kube-system
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ""
+spec:
+  containers:
+  - command:
+    - /hyperkube
+    - apiserver
+    ...
+    - --audit-policy-file=/etc/kubernetes/cfg/audit-policy.yaml
+    - --audit-log-path=/var/log/kube-audit/audit.log # 这里必须是文件路径
+    ...
+    image: k8s.gcr.io/hyperkube:v1.13.5
+    imagePullPolicy: IfNotPresent
+    securityContext:
+      runAsUser: 1999
+    ...
+    volumeMounts:
+    - mountPath: /var/log/kube-audit
+      name: kube-audit
+    - mountPath: /etc/kubernetes/cfg/audit-policy.yaml
+      name: audit-policy
+      readOnly: true
+  ...
+  volumes:
+  - hostPath:
+      path: /var/log/kube-audit
+    name: kube-audit
+  - hostPath:
+      path: /opt/kubernetes/cfg/audit-policy.yaml
+    name: audit-policy
+
+```
+
 ### Webhook 后端
 Webhook 配置文件实际上是一个 `kubeconfig` 文件，apiserver 会将审计日志发送到指定的 webhook 后，webhook 接收到日志后可以再分发到 kafka 或其他组件进行收集。
 使用如下 `kube-apiserver` 标志来配置 webhook 审计后端：

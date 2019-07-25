@@ -154,6 +154,12 @@ main:
   type: link
   path: storage/storageclass.html
 
+- text: 实践
+  type: label
+- text: 审计日志
+  type: link
+  path: practice/audit.html
+
 - text: 排错指南
   type: label
 - text: 排错概览

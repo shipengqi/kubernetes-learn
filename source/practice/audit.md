@@ -4,7 +4,8 @@ title: 审计日志
 
 # 审计日志
 Kubernetes 审计（Audit）提供了安全相关的时序操作记录，可以记录所有对 apiserver 接口的调用，让我们能够非常清晰的知道集群到底发生了什么事情，通过记录的日志可以查到所发生的事件、操作的用户和时间。
-支持日志和 webhook 两种格式，并可以通过审计策略自定义事件类型。
+
+支持**日志**和 **webhook** 两种格式，并可以通过审计策略自定义事件类型。
 
 ## 审计日志的策略
 ### 日志记录阶段
@@ -34,10 +35,8 @@ kube-apiserver 是负责接收及响应用户请求的一个组件，每一个�
 
 可以使用 `--audit-policy-file` 标志将包含策略的文件传递给 kube-apiserver。如果不设置该标志，则不记录事件。 注意 **`rules` 字段必须在审计策略文件中提供**。
 
-一个审计策略文件的示例：
+审计策略文件的示例：
 ```yml
-audit/audit-policy.yaml
-
 apiVersion: audit.k8s.io/v1beta1 # This is required.
 kind: Policy
 # Don't generate audit events for all requests in RequestReceived stage.
@@ -106,6 +105,195 @@ rules:
     # generate an audit event in RequestReceived.
     omitStages:
       - "RequestReceived"
+---
+apiVersion: audit.k8s.io/v1beta1
+kind: Policy
+rules:
+  # The following requests were manually identified as high-volume and low-risk,
+  # so drop them.
+  - level: None
+    resources:
+      - group: ""
+        resources:
+          - endpoints
+          - services
+          - services/status
+    users:
+      - 'system:kube-proxy'
+    verbs:
+      - watch
+
+  - level: None
+    resources:
+      - group: ""
+        resources:
+          - nodes
+          - nodes/status
+    userGroups:
+      - 'system:nodes'
+    verbs:
+      - get
+
+  - level: None
+    namespaces:
+      - kube-system
+    resources:
+      - group: ""
+        resources:
+          - endpoints
+    users:
+      - 'system:kube-controller-manager'
+      - 'system:kube-scheduler'
+      - 'system:serviceaccount:kube-system:endpoint-controller'
+    verbs:
+      - get
+      - update
+
+  - level: None
+    resources:
+      - group: ""
+        resources:
+          - namespaces
+          - namespaces/status
+          - namespaces/finalize
+    users:
+      - 'system:apiserver'
+    verbs:
+      - get
+
+  # Don't log HPA fetching metrics.
+  - level: None
+    resources:
+      - group: metrics.k8s.io
+    users:
+      - 'system:kube-controller-manager'
+    verbs:
+      - get
+      - list
+
+  # Don't log these read-only URLs.
+  - level: None
+    nonResourceURLs:
+      - '/healthz*'
+      - /version
+      - '/swagger*'
+
+  # Don't log events requests.
+  - level: None
+    resources:
+      - group: ""
+        resources:
+          - events
+
+  # node and pod status calls from nodes are high-volume and can be large, don't log responses for expected updates from nodes
+  - level: Request
+    omitStages:
+      - RequestReceived
+    resources:
+      - group: ""
+        resources:
+          - nodes/status
+          - pods/status
+    users:
+      - kubelet
+      - 'system:node-problem-detector'
+      - 'system:serviceaccount:kube-system:node-problem-detector'
+    verbs:
+      - update
+      - patch
+
+  - level: Request
+    omitStages:
+      - RequestReceived
+    resources:
+      - group: ""
+        resources:
+          - nodes/status
+          - pods/status
+    userGroups:
+      - 'system:nodes'
+    verbs:
+      - update
+      - patch
+
+  # deletecollection calls can be large, don't log responses for expected namespace deletions
+  - level: Request
+    omitStages:
+      - RequestReceived
+    users:
+      - 'system:serviceaccount:kube-system:namespace-controller'
+    verbs:
+      - deletecollection
+
+  # Secrets, ConfigMaps, and TokenReviews can contain sensitive & binary data,
+  # so only log at the Metadata level.
+  - level: Metadata
+    omitStages:
+      - RequestReceived
+    resources:
+      - group: ""
+        resources:
+          - secrets
+          - configmaps
+      - group: authentication.k8s.io
+        resources:
+          - tokenreviews
+  # Get repsonses can be large; skip them.
+  - level: Request
+    omitStages:
+      - RequestReceived
+    resources:
+      - group: ""
+      - group: admissionregistration.k8s.io
+      - group: apiextensions.k8s.io
+      - group: apiregistration.k8s.io
+      - group: apps
+      - group: authentication.k8s.io
+      - group: authorization.k8s.io
+      - group: autoscaling
+      - group: batch
+      - group: certificates.k8s.io
+      - group: extensions
+      - group: metrics.k8s.io
+      - group: networking.k8s.io
+      - group: policy
+      - group: rbac.authorization.k8s.io
+      - group: scheduling.k8s.io
+      - group: settings.k8s.io
+      - group: storage.k8s.io
+    verbs:
+      - get
+      - list
+      - watch
+
+  # Default level for known APIs
+  - level: RequestResponse
+    omitStages:
+      - RequestReceived
+    resources:
+      - group: ""
+      - group: admissionregistration.k8s.io
+      - group: apiextensions.k8s.io
+      - group: apiregistration.k8s.io
+      - group: apps
+      - group: authentication.k8s.io
+      - group: authorization.k8s.io
+      - group: autoscaling
+      - group: batch
+      - group: certificates.k8s.io
+      - group: extensions
+      - group: metrics.k8s.io
+      - group: networking.k8s.io
+      - group: policy
+      - group: rbac.authorization.k8s.io
+      - group: scheduling.k8s.io
+      - group: settings.k8s.io
+      - group: storage.k8s.io
+
+  # Default level for all other requests.
+  - level: Metadata
+    omitStages:
+      - RequestReceived
 ```
 
 可以使用最低限度的审计策略文件在 Metadata 级别记录所有请求：

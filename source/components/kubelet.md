@@ -122,7 +122,7 @@ CRI 基于 gRPC 定义了 `RuntimeService` 和 `ImageService` 等两个 gRPC 服
 - [Infranetes](https://github.com/apporbit/infranetes)：直接管理 IaaS 平台虚拟机，如 GCE、AWS 等
 
 ## kubelet systemd 文件示例
-```service
+```
 [Unit]
 Description=Kubernetes Kubelet
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
@@ -163,6 +163,28 @@ User=root
 
 [Install]
 WantedBy=multi-user.target
+```
+
+`native.kubeconfig` 如下：
+```
+apiVersion: v1
+kind: Config
+clusters:
+  - cluster:
+      certificate-authority: /opt/kubernetes/ssl/ca.crt
+      server: https://shccentos72vm07.hpeswlab.net:8443
+    name: kubernetes
+contexts:
+  - context:
+      cluster: kubernetes
+      user: kubelet
+    name: kubelet-to-kubernetes
+current-context: kubelet-to-kubernetes
+users:
+  - name: kubelet
+    user:
+      client-certificate: /opt/kubernetes/ssl/kubernetes.crt
+      client-key: /opt/kubernetes/ssl/kubernetes.key
 ```
 
 ## kubelet 工作原理

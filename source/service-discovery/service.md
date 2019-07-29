@@ -123,14 +123,14 @@ REDIS_MASTER_PORT_6379_TCP_ADDR=10.0.0.11
 **这意味着一个 Pod 想要访问的一个 Service， 那么这个 Service 必须在 Pod 自己之前被创建，否则这些环境变量就不会被赋值。DNS 没有这个限制**。
 
 ### DNS
-一个可选（强烈推荐）[集群插件](https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/README.html) 是 DNS 服务器。
+一个可选（强烈推荐）[集群插件](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons) 是 DNS 服务器。
 DNS 服务器监视着创建新 Service 的 Kubernetes API，从而为每一个 Service 创建一组 DNS 记录。如果整个集群的 DNS 一直被启用，那么所有的 Pod 应该能够自动对 Service 进行名称解析。
 
-例如，有一个名称为 `"chatbot-svc"` 的 Service，它在 Kubernetes 集群中名为 `"core"` 的 Namespace 中，为 `"chatbot-svc.core"` 创建了一条 DNS 记录。
-在名称为 `"core"` 的 Namespace 中的 Pod 可以直接通过 Service 的名称 `"chatbot-svc"` 访问该 service。 但是如果在另一个 Namespace 中的 Pod 必须
-以全名 `"chatbot-svc.core"` 访问该 service。
+例如，有一个名称为 `chatbot-svc` 的 Service，它在 Kubernetes 集群中名为 `core` 的 Namespace 中，为 `chatbot-svc.core` 创建了一条 DNS 记录。
+在名称为 `core` 的 Namespace 中的 Pod 可以直接通过 Service 的名称 `chatbot-svc` 访问该 service。 但是如果在另一个 Namespace 中的 Pod 必须
+以全名 `chatbot-svc.core` 访问该 service。
 
-Kubernetes 也支持对端口名称的 DNS SRV（Service）记录。 如果名称为 `"chatbot-svc.core"` 的 Service 有一个名为 "http" 的 TCP 端口，
+Kubernetes 也支持对端口名称的 DNS SRV（Service）记录。 如果名称为 `chatbot-svc.core` 的 Service 有一个名为 "http" 的 TCP 端口，
 可以对 "_http._tcp.chatbot-svc.core" 执行 DNS SRV 查询，得到 "http" 的端口号。
 
 Kubernetes DNS 服务器是唯一的一种能够访问 `ExternalName` 类型的 Service 的方式。
@@ -223,10 +223,9 @@ Headless Service 即不需要 Cluster IP 的服务。有时不需要或不想要
 
 对这类 Service 并不会分配 Cluster IP，`kube-proxy` 不会处理它们，而且平台也不会为它们进行负载均衡和路由。 DNS 如何实现自动配置，依赖于 Service 是否定义了 `selector`。
 
-
 - 定义了 Selectors 的 Headless Service，Endpoint 控制器在 API 中创建了 `Endpoints` 记录，并且修改 DNS 配置返回 A 记录（地址），通过这个
 地址直接到达 Service 的后端 Pod 上。
-- 不定义 Selectors 的 Headless Service，但设置 `externalName`，即上面的 **DNS 转发**，通过 CNAME 记录处理
+- 不定义 Selectors 的 Headless Service，但设置 `externalName`，即上面的 **DNS 转发**，通过 CNAME 记录处理。
 
 ```yml
 apiVersion: v1

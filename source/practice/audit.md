@@ -357,11 +357,12 @@ spec:
     name: audit-policy
 ```
 
-上面的示例中由于 pod 的 user 是 `1999`，所以 `/var/log/kube-audit` 的 owner 也必须是 `1999`，否则可能会报 `permission denied`，像下面的错误：
+上面的示例中由于 pod 的 user 是 `1999`，所以 `/var/log/kube-audit` 的 owner 也必须是 `1999`，否则会报 `permission denied`，像下面的错误：
 ```sh
 kube-apiserver[1574]: E1105 18:43:54.090393 1574 metrics.go:86] Error in audit plugin 'log' affecting 1 audit
  events: can't open new logfile: open /var/lib/audit.log: permission denied
 ```
+可以使用 `chown` 命令。
 
 ### Webhook 后端
 Webhook 配置文件实际上是一个 `kubeconfig` 文件，apiserver 会将审计日志发送到指定的 webhook 后，webhook 接收到日志后可以再分发到 kafka 或其他组件进行收集。

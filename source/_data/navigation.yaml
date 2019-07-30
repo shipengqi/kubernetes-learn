@@ -59,6 +59,9 @@ main:
 - text: Pod 中断与 PDB
   type: link
   path: pod/pdb.html
+- text: QoS
+  type: link
+  path: pod/qos.html  
 
 - text: 集群资源管理
   type: label
@@ -153,6 +156,15 @@ main:
 - text: StorageClass
   type: link
   path: storage/storageclass.html
+
+- text: 扩展
+  type: label
+- text: CRI
+  type: link
+  path: extension/cri.html
+- text: CNI
+  type: link
+  path: extension/cni.html
 
 - text: 实践
   type: label

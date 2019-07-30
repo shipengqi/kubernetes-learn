@@ -33,7 +33,7 @@ kubectl config use-context kubelet-to-kubernetes
 - 更新 `kubectl set` 或者 `kubectl patch`
 - 删除：`kubectl delete <resource> <name>` 或者 `kubectl delete -f manifest.yaml`
 - 查询 Pod IP：`kubectl get pod <pod-name> -o jsonpath='{.status.podIP}'`
-- 容器内执行命令：`kubectl exec -ti <pod-name> sh`
+- 容器内执行命令：`kubectl exec -it <pod-name> bash`
 - 容器日志：`kubectl logs [-f] <pod-name>`
 - 导出服务：`kubectl expose deploy <name> --port=80`
 - Base64 解码：

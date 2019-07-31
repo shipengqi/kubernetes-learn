@@ -43,3 +43,15 @@ kubectl get secret SECRET -o go-template='{{ .data.KEY | base64decode }}'
 
 
 > `kubectl run` 仅支持 Pod、Replication Controller、Deployment、Job 和 CronJob 等几种资源。
+
+## 命令概览
+Kubectl 的子命令主要分为8个类别：
+
+- 基础命令（初级）
+- 基础命令（中级）
+- 部署命令
+- 集群管理命令
+- 故障排查和调试命令
+- 高级命令
+- 设置命令
+- 其他命令

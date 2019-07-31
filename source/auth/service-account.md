@@ -13,7 +13,7 @@ User account 的区别：
   - **每个 Pod 在创建后都会自动设置 `spec.serviceAccountName` 为 `default`**（除非指定了其他 ServiceAccount）
   - 验证 Pod 引用的 ServiceAccount 已经存在，否则拒绝创建
   - 如果 Pod 没有指定 ImagePullSecrets，则把 ServiceAccount 的 ImagePullSecrets 加到 Pod 中
-  - **每个 container 启动后都会挂载该 ServiceAccount 的` token` 和 `ca.crt` 到 `/var/run/secrets/kubernetes.io/serviceaccount/`**
+  - **每个 container 启动后都会挂载该 ServiceAccount 的 `token` 和 `ca.crt` 到 `/var/run/secrets/kubernetes.io/serviceaccount/`**
 
 在 1.6 以上版本中，可以选择取消为 ServiceAccount 自动挂载 API 凭证，只需在 ServiceAccount 中设置 `automountServiceAccountToken: false`：
 ```yml

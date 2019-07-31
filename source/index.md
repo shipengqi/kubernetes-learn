@@ -76,4 +76,4 @@ spec:
 - `apiVersion` - 创建该对象所使用的 Kubernetes API 的版本
 - `kind` - 想要创建的对象的类型
 - `metadata` - 帮助识别对象唯一性的数据，每个对象都至少有3个元数据：`namespace`，`name` 和 `uid`，除此以外还有 `labels`
-- `spec`
+- `spec`：指定了对资源的配置信息。例如其中的 `replicas` 指定了副本数当前指定为 3。`template.spec` 则指定了 Pod 中容器的配置信息，这里的 Pod 中只部署了一个 nginx 容器。

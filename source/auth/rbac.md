@@ -54,7 +54,7 @@ rules:
 上面例子中的 `ClusterRole` 定义可用于授予用户对某一特定命名空间，或者所有命名空间中的 `secret`（取决于其绑定方式）的读访问权限
 
 ## RoleBinding 与 ClusterRoleBinding
-`RoleBinding` 把 `Role` 或` ClusterRole` 中定义的各种权限映射到 `User`，`Service Account` 或者 `Group`，从而让这些用户继承角色在 namespace 中的权限。
+`RoleBinding` 把 `Role` 或` ClusterRole` 中定义的各种权限映射到 `User`，`Service Account` 或者 `Group`，从而让这些用户继承角色在 `namespace` 中的权限。
 `ClusterRoleBinding` 让用户继承 `ClusterRole` 在整个集群中的权限。
 
 ![rbac](../imgs/rbac2.png)
@@ -433,4 +433,204 @@ kubectl create clusterrolebinding permissive-binding \
   --user=admin \
   --user=kubelet \
   --group=system:serviceaccounts
+```
+
+
+## 示例
+```yml
+#create cdf deployer service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cdf-deployer
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+#create suite installer service account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: suite-installer
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+#create cdf view service account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cdf-view
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+#create heapster service account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: heapster-apiserver
+  namespace: kube-system
+
+---
+# create cdf application role. Type: clusterrole, Name: cdf:application
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cdf:application
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+  - deletecollection
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - services
+  verbs:
+  - get
+
+---
+#create rolebinding for default service account in ${KUBE_SYSTEM_NAMESPACE} namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default:cdf:application
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cdf:application
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+---
+#create rolebinding for cdf view service account in ${KUBE_SYSTEM_NAMESPACE} namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cdf:view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: cdf-view
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+---
+#add cluster rolebindings for dashboard
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cdf:dashboard:cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: User
+  name: itom-k8s-dashboard-svc.core
+  apiGroup: rbac.authorization.k8s.io
+
+---
+#add cluster rolebindings for heapster
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: heapster:apiserver
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:heapster
+subjects:
+- kind: ServiceAccount
+  name: heapster-apiserver
+  namespace: kube-system
+
+---
+#create cluster rolebinding for suite installer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: suite-installer:admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: suite-installer
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+---
+#create cluster rolebinding for cdf deployer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cdf-deployer:cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: cdf-deployer
+  namespace: {KUBE_SYSTEM_NAMESPACE}
+
+---
+#create cluster rolebinding for system:nodes group
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cdf:system:node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: User
+  name: kubernetes-node
+  apiGroup: rbac.authorization.k8s.io
+
+---
+#create cluster rolebinding for kubernetes-admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cdf:kubernetes-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: User
+  name: kubernetes-admin
+  apiGroup: rbac.authorization.k8s.io
 ```

@@ -61,7 +61,7 @@ main:
   path: pod/pdb.html
 - text: QoS
   type: link
-  path: pod/qos.html  
+  path: pod/qos.html
 
 - text: 集群资源管理
   type: label
@@ -165,6 +165,9 @@ main:
 - text: CNI
   type: link
   path: extension/cni.html
+- text: CSI
+  type: link
+  path: extension/csi.html
 
 - text: 实践
   type: label
@@ -177,6 +180,12 @@ main:
 - text: 排错概览
   type: link
   path: debug/README.html
+
+- text: Docker
+  type: label
+- text: 容器基础
+  type: link
+  path: docker/README.html
 
 - text: THEME
   type: label

@@ -171,9 +171,15 @@ main:
 
 - text: 实践
   type: label
+- text: kubeconfig
+  type: link
+  path: practice/kubeconfig.html
 - text: 审计日志
   type: link
   path: practice/audit.html
+- text: Helm
+  type: link
+  path: practice/helm.html
 
 - text: 排错指南
   type: label

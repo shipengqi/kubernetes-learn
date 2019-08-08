@@ -96,7 +96,7 @@ spec:
 
 `externalIPs` 可以同任意的 ServiceType 来一起指定。 在下面的例子中，`my-service` 可以在 `80.11.12.10:80`（外部 IP:端口）上被客户端访问。
 
-`externalIPs` 字段填入 IP 地址之后，`kube-proxy` 会增加对应的 iptables 规则， 当有以对应 IP 为目标的流量发送到 Node 节点时，iptables 将进行 NAT，将
+`externalIPs` 字段填入 IP 地址之后，`kube-proxy` 会增加对应的 `iptables` 规则， 当有以对应 IP 为目标的流量发送到 Node 节点时，iptables 将进行 NAT，将
 流量转发到对应的服务上。一般情况下，很少会遇到服务器接受非自身绑定 IP 流量的情况，所以 `externalIPs` 不常被使用，但配合网络层的其他工具，
 它可以实现给 Service 绑定外部 IP 的效果。
 
@@ -109,7 +109,7 @@ Kubernetes 支持2种基本的服务发现模式 —— 环境变量和 DNS。
 当 Pod 运行在 Node 上，kubelet 会为每个活跃的 Service 添加一组环境变量。 它同时支持 [Docker links兼容](https://docs.docker.com/network/links/) 变量
 （查看 `makeLinkVariables`）、简单的 `{SVCNAME}_SERVICE_HOST` 和 `{SVCNAME}_SERVICE_PORT` 变量，这里 Service 的名称需要大写，横线被转换成下划线。
 
-举个例子，一个名称为 "redis-master" 的 Service 暴露了 TCP 端口 6379，同时给它分配了 Cluster IP 地址 `10.0.0.11`，这个 Service 生成了如下环境变量：
+举个例子，一个名称为 "redis-master" 的 Service 暴露了 TCP 端口 `6379`，同时给它分配了 Cluster IP 地址 `10.0.0.11`，这个 Service 生成了如下环境变量：
 ```sh
 REDIS_MASTER_SERVICE_HOST=10.0.0.11
 REDIS_MASTER_SERVICE_PORT=6379

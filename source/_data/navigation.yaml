@@ -157,6 +157,12 @@ main:
   type: link
   path: storage/storageclass.html
 
+- text: 网络
+  type: label
+- text: NetworkPolicy
+  type: link
+  path: network/network-policy.html
+
 - text: 扩展
   type: label
 - text: CRI

@@ -8,7 +8,7 @@
 # install dependencies
 yarn
 
-# start dev server
+# start dev server, access http://localhost:8082/kubernetes-learn
 yarn start
 
 # deploy

@@ -30,6 +30,29 @@ Pod 的两种使用方式：
 
 每个 Pod 都是一个应用实例。如果要运行多个 Pod 实例，在 Kubernetes 中，这通常被称为 `replication`。
 
+## RestartPolicy
+支持三种 RestartPolicy：
+- `Always`：只要退出就重启
+- `OnFailure`：失败退出（exit code 不等于 0）时重启
+- `Never`：只要退出就不再重启
+
+## 环境变量
+1. `HOSTNAME` 环境变量保存了该 Pod 的 hostname。
+2. 容器和 Pod 的基本信息
+Pod 的名字、命名空间、IP 以及容器的计算资源限制等可以以 [Downward API](../practice/inject-data-into-app.html#Downward-API)
+ 的方式获取并存储到环境变量中。
+3. 集群中服务的信息
+容器的环境变量中还可以引用容器运行前创建的所有服务的信息，比如默认的 kubernetes 服务对应以下环境变量：
+```sh
+KUBERNETES_PORT_443_TCP_ADDR=10.0.0.1
+KUBERNETES_SERVICE_HOST=10.0.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_SERVICE_PORT_HTTPS=443
+KUBERNETES_PORT=tcp://10.0.0.1:443
+KUBERNETES_PORT_443_TCP=tcp://10.0.0.1:443
+KUBERNETES_PORT_443_TCP_PROTO=tcp
+KUBERNETES_PORT_443_TCP_PORT=443
+```
 ## 镜像拉取策略
 支持三种 `ImagePullPolicy`：
 
@@ -43,6 +66,218 @@ Pod 的两种使用方式：
 
 生产环境中应该尽量避免使用 `:latest` 标签，而开发环境中可以借助 `:latest` 标签自动拉取最新的镜像。
 
+## 访问 DNS 的策略
+通过设置 `dnsPolicy` 参数，设置 Pod 中容器访问 DNS 的策略：
+- `ClusterFirst`：优先基于 cluster domain （如 `default.svc.cluster.local`） 后缀，通过 `kube-dns` 查询 (默认策略)
+- `Default`：优先从 Node 中配置的 DNS 查询
+
+## 使用主机的 IPC 命名空间
+通过设置 `spec.hostIPC` 参数为 `true`，使用主机的 IPC 命名空间，默认为 `false`。
+## 使用主机的网络命名空间
+通过设置 `spec.hostNetwork` 参数为 `true`，使用主机的网络命名空间，默认为 `false`。
+## 使用主机的 PID 空间
+通过设置 `spec.hostPID` 参数为 `true`，使用主机的 PID 命名空间，默认为 `false`。
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox1
+  labels:
+    name: busybox
+spec:
+  hostIPC: true
+  hostPID: true
+  hostNetwork: true
+  containers:
+  - image: busybox
+    command:
+      - sleep
+      - "3600"
+    name: busybox
+```
+
+## 设置 Pod 的 hostname
+通过 `spec.hostname` 参数实现，如果未设置默认使用 `metadata.name` 参数的值作为 Pod 的 `hostname`。
+
+## 设置 Pod 的子域名
+比如，指定 `hostname` 为 `busybox-2` 和 `subdomain` 为 `default-subdomain`，完整域名为 `busybox-2.default-subdomain.default.svc.cluster.local`，
+也可以简写为 `busybox-2.default-subdomain.default`：
+
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox2
+  labels:
+    name: busybox
+spec:
+  hostname: busybox-2
+  subdomain: default-subdomain
+  containers:
+  - image: busybox
+    command:
+      - sleep
+      - "3600"
+    name: busybox
+```
+注意：
+- 默认情况下，DNS 为 Pod 生成的 A 记录格式为 `pod-ip-address.my-namespace.pod.cluster.local`，
+如 `1-2-3-4.default.pod.cluster.local`
+- 上面的示例还需要在 default namespace 中创建一个名为 `default-subdomain`（即 `subdomain`）
+的 headless service，否则其他 Pod 无法通过完整域名访问到该 Pod（只能自己访问到自己）
+
+```yml
+kind: Service
+apiVersion: v1
+metadata:
+  name: default-subdomain
+spec:
+  clusterIP: None
+  selector:
+    name: busybox
+  ports:
+  - name: foo # Actually, no port is needed.
+    port: 1234
+    targetPort: 1234
+```
+注意，必须为 headless service 设置至少一个服务端口（`spec.ports`，即便它看起来并不需要），
+否则 Pod 与 Pod 之间依然无法通过完整域名来访问。
+
+## 设置 Pod 的 DNS 选项
+从 v1.9 开始，可以在 kubelet 和 kube-apiserver 中设置 `--feature-gates=CustomPodDNS=true` 开启设置每个 Pod DNS
+地址的功能。
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: default
+  name: dns-example
+spec:
+  containers:
+    - name: test
+      image: nginx
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers:
+      - 1.2.3.4
+    searches:
+      - ns1.svc.cluster.local
+      - my.dns.search.suffix
+    options:
+      - name: ndots
+        value: "2"
+      - name: edns0
+```
+对于旧版本的集群，可以使用 ConfigMap 来自定义 Pod 的 `/etc/resolv.conf`，如：
+```yml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: resolvconf
+  namespace: default
+data:
+  resolv.conf: |
+    search default.svc.cluster.local svc.cluster.local cluster.local
+    nameserver 10.0.0.10
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: dns-test
+  namespace: default
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: dns-test
+    spec:
+      containers:
+        - name: dns-test
+          image: alpine
+          stdin: true
+          tty: true
+          command: ["sh"]
+          volumeMounts:
+            - name: resolv-conf
+              mountPath: /etc/resolv.conf
+              subPath: resolv.conf
+      volumes:
+        - name: resolv-conf
+          configMap:
+            name: resolvconf
+            items:
+            - key: resolv.conf
+              path: resolv.conf
+```
+
+## 限制网络带宽
+可以通过给 Pod 增加 `kubernetes.io/ingress-bandwidth` 和 `kubernetes.io/egress-bandwidth` 这两个 `annotation` 来
+限制 Pod 的网络带宽
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos
+  annotations:
+    kubernetes.io/ingress-bandwidth: 3M
+    kubernetes.io/egress-bandwidth: 4M
+spec:
+  containers:
+  - name: iperf3
+    image: networkstatic/iperf3
+    command:
+    - iperf3
+    - -s
+```
+
+> **目前只有 kubenet 网络插件支持限制网络带宽**，其他 CNI 网络插件暂不支持这个功能。
+
+## 自定义 hosts
+默认情况下，容器的 `/etc/hosts` 是 kubelet 自动生成的，并且仅包含 localhost 和 podName 等。不
+建议在容器内直接修改 `/etc/hosts` 文件，因为在 Pod 启动或重启时会被覆盖。
+
+从 v1.7 开始，可以通过 `pod.Spec.HostAliases` 来增加 hosts 内容，如
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostaliases-pod
+spec:
+  hostAliases:
+  - ip: "127.0.0.1"
+    hostnames:
+    - "foo.local"
+    - "bar.local"
+  - ip: "10.1.2.3"
+    hostnames:
+    - "foo.remote"
+    - "bar.remote"
+  containers:
+  - name: cat-hosts
+    image: busybox
+    command:
+    - cat
+    args:
+    - "/etc/hosts"
+```
+
+```sh
+$ kubectl logs hostaliases-pod
+# Kubernetes-managed hosts file.
+127.0.0.1    localhost
+::1    localhost ip6-localhost ip6-loopback
+fe00::0    ip6-localnet
+fe00::0    ip6-mcastprefix
+fe00::1    ip6-allnodes
+fe00::2    ip6-allrouters
+10.244.1.5    hostaliases-pod
+127.0.0.1    foo.local
+127.0.0.1    bar.local
+10.1.2.3    foo.remote
+10.1.2.3    bar.remote
+```
 ## 一个 Pod 管理多个容器
 同一个 Pod 中的容器会自动的分配到同一个 node 上。同一个 Pod 中的容器共享资源、网络环境和依赖，它们总是被同时调度。
 Pod中可以共享两种资源：网络和存储。如：

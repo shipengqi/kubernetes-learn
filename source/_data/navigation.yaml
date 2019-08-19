@@ -177,6 +177,9 @@ main:
 
 - text: 实践
   type: label
+- text: Inject Data Into Application
+  type: link
+  path: practice/inject-data-into-app.html
 - text: kubeconfig
   type: link
   path: practice/kubeconfig.html

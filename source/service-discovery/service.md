@@ -12,6 +12,26 @@ Pod 是有生命周期的，它们可以被创建，也可以被销毁，并且�
 
 比如，一个 backend pod 要访问 mysql pod，mysql 有三个副本， backend 不需要关心 mysql pod 可能会发生的变化，Service 定义的抽象能够解耦这种关联。
 
+```yml
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+```
+
+上述配置将创建一个名称为 `my-service` 的 Service 对象，它会将请求代理到使用 TCP 端口 9376，并且具有标签 `app=MyApp` 的 Pod 上。
+这个 Service 将被指派一个 IP 地址（通常称为 “Cluster IP”），它会被服务的代理使用。
+
+Service 能够将一个接收端口映射到任意的 `targetPort`。 默认情况下，`targetPort` 将被设置为与 `port` 字段相同的值。
+`targetPort` 可以是一个字符串，引用了 backend Pod 的一个端口的名称。但是，实际指派给该端口名称的端口号，在每个 backend Pod 中可能并不相同。
+
 ## 类型
 Service 有四种类型， `spec.type` 的取值以及行为如下：
 - ClusterIP：默认类型，自动分配一个仅 cluster 内部可以访问的虚拟 IP

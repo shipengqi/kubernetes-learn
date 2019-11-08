@@ -96,6 +96,24 @@ spec:
     name: busybox
 ```
 
+## 设置 Pod 的端口映射
+通过指定容器的 `hostPort` 和 `containerPort` 来创建端口映射，这样可以通过 Pod 所在 Node 的 IP:hostPort 来访问服务。比如：
+```yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 80
+      hostPort: 80
+```
+
+注意  `hostPort` 不要与 Node 上的端口冲突。
+
 ## 设置 Pod 的 hostname
 通过 `spec.hostname` 参数实现，如果未设置默认使用 `metadata.name` 参数的值作为 Pod 的 `hostname`。
 

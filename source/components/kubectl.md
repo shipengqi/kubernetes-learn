@@ -55,6 +55,7 @@ kubectl get secret SECRET -o go-template='{{ .data.KEY | base64decode }}'
 - [kubectl config](#config) – 修改 kubeconfig 配置文件。
 - [kubectl convert](#convert) – 转换配置文件为不同的 API 版本。
 - [kubectl cordon](#cordon) – 将节点标记为不可调度。
+- [kubectl cp](#cp) – 从容器中复制文件和目录。
 - [kubectl create](#create) – 通过文件名或控制台输入，创建资源。
 - [kubectl delete](#delete) – 通过文件名、控制台输入、资源名或者 label selector 删除资源。
 - [kubectl describe](#describe) – 输出指定的一个/多个资源的详细信息。
@@ -417,6 +418,29 @@ kubectl cordon NODE
 kubectl cordon foo
 ```
 
+### cp
+```sh
+kubectl cp <file-spec-src> <file-spec-dest>
+
+# 选项
+-c, --container=""：容器的名字。如果省略，将选择 pod 中的第一个容器。
+--no-preserve[=true]：默认为 false。复制的文件/目录的所有权和权限将不会保留在容器中
+```
+
+#### 示例
+```sh
+# 将本地目录 /tmp/foo_dir 复制到默认名称空间中的 pod 中的 /tmp/bar_dir
+kubectl cp /tmp/foo_dir <some-pod>:/tmp/bar_dir
+
+# 复制本地文件 /tmp/foo 到 pod 的特定的容器中的 /tmp/bar
+kubectl cp /tmp/foo <some-pod>:/tmp/bar -c <specific-container>
+
+# 将本地文件 /tmp/foo 复制到指定名称空间中的 pod 中的 /tmp/bar
+kubectl cp /tmp/foo <some-namespace>/<some-pod>:/tmp/bar
+
+# 从 pod 中的 /tmp/foo 复制到本地的 /tmp/bar
+kubectl cp <some-namespace>/<some-pod>:/tmp/foo /tmp/bar
+```
 ### create
 通过文件名或控制台输入，创建资源。接受 JSON 和 YAML 格式的描述文件。
 ```sh

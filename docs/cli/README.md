@@ -1,2 +1,0 @@
-# kubernetes-learn
-Kubernetes learning.

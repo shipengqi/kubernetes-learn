@@ -101,6 +101,9 @@ main:
 - text: Job
   type: link
   path: controller/job.html
+- text: TTL
+  type: link
+  path: controller/ttl.html
 - text: CronJob
   type: link
   path: controller/cron-job.html

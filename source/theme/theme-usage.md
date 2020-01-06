@@ -13,8 +13,8 @@ $ git clone git@github.com:zalando-incubator/hexo-theme-doc-seed.git
 
 2. `hexo-theme-doc-seed` 的以下文件拷贝到项目 root 目录下，例如 `kubernetes-learn`：
 - `source` 目录
-- `_data` 目录
-- `images` 目录
+  - `_data` 目录
+  - `images` 目录
 - `package.json`
 - `_config.yaml`
 - `.zappr.yaml`

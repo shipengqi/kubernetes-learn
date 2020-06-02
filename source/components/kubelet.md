@@ -9,7 +9,7 @@ title: kubelet
 ## 节点管理
 节点管理主要是节点自注册和节点状态更新：
 - Kubelet 可以通过设置启动参数 `--register-node` 来确定是否向 API Server 注册自己；如果 Kubelet 没有选择自注册模式，则需要用户自己配置 Node 资源信息，
-同时需要告知 Kubelet 集群上的 API Server 的位置；
+同时需要告知 Kubelet 集群上的 API Server 的位置（`--api-servers` 参数）；
 - Kubelet 在启动时通过 API Server 注册节点信息，并定时向 API Server 发送节点新消息，API Server 在接收到新消息后，将信息写入 etcd。
 
 ## Pod 管理
@@ -35,11 +35,13 @@ kubelet 以 `PodSpec` 为单位来运行任务，`PodSpec` 是一个描述 pod �
 ## 容器健康检查
 Pod 通过两类探针检查容器的健康状态，参考 [Pod 探针](../pod/lifecycle.html#探针)。
 
+kubelet 会定时调用健康探针来诊断容器的状态。
+
 ## cAdvisor 资源监控
 
 Kubernetes 集群中，**应用程序的执行情况可以在不同的级别上监测到，这些级别包括：容器、Pod、Service 和整个集群**。Heapster 项目为 Kubernetes 提供了一个基本的监控平台，
-它是集群级别的监控和事件数据集成器 (Aggregator)。**Heapster 以 Pod 的方式运行在集群中，Heapster 通过 Kubelet 发现所有运行在集群中的节点，并查看来自这
-些节点的资源使用情况。Kubelet 通过 cAdvisor 获取其所在节点及容器的数据**。Heapster 通过带着关联标签的 Pod 分组这些信息，这些数据将被推到一个可配置的后端，
+它是集群级别的监控和事件数据集成器 (Aggregator)。Heapster 以 Pod 的方式运行在集群中，Heapster 通过 Kubelet 发现所有运行在集群中的节点，并查看来自这
+些节点的资源使用情况。Kubelet 通过 cAdvisor 获取其所在节点及容器的数据。Heapster 通过带着关联标签的 Pod 分组这些信息，这些数据将被推到一个可配置的后端，
 用于存储和可视化展示。支持的后端包括 InfluxDB (使用 Grafana 实现可视化) 和 Google Cloud Monitoring。
 
 - cAdvisor 是一个开源的分析容器资源使用率和性能特性的代理工具，已集成到 Kubernetes 代码中。

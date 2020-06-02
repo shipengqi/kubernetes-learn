@@ -5,7 +5,7 @@ title: kube-controller-manager
 # kube-controller-manager
 
 Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 组成，是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，
-并确保集群处于预期的工作状态。
+，发现故障自动修复，确保集群处于预期的工作状态。
 
 
 <img src="../imgs/controller-manager.png" width="70%">
@@ -95,3 +95,22 @@ spec:
       path: {K8S_HOME}/cfg/controller-manager
     name: config
 ```
+
+## Repliaction Controller
+k8s 中除了副本控制器叫做 Repliaction Controller，另外还有一个资源对象也叫 Repliaction Controller。这里将资源对象简称 RC。
+Repliaction Controller 指副本控制器。
+
+Repliaction Controller 的核心作用是确保任何一个 RC 所关联的 Pod 的副本数量保持预设值。pod 副本数量多于预设值则销毁，反之创建。
+
+pod 的重启策略 RestartPolicy=Always 时，才会被 Repliaction Controller 管理。
+
+注意如果 pod 长时间处于 failed 或 succeed 状态，pod 会被自动回收，Repliaction Controller 则会重新创建 pod 副本。
+
+### 滚动更新
+
+有一个以上的副本时，Repliaction Controller 可以逐个替换 pod 实现滚动更新。
+
+## Node Controller
+kubelet 在启动时，向 API server 注册节点信息，并定时向 API server 汇报节点状态。API server 负责将节点信息更新到 ETCD。
+
+Node Controller 通过 API server 实时获取 Node 信息，监控和管理所有 Node 节点。

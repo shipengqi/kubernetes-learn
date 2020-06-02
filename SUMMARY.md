@@ -10,3 +10,4 @@
 - Docker 深入浅出
 - [Helm 中文文档](http://www.coderdocument.com/docs/helm/v2/index.html)
 - [Helm 用户指南](https://whmzsu.github.io/helm-doc-zh-cn/)
+- [Dockerfile sample](https://github.com/grafana/grafana/blob/master/Dockerfile)

@@ -7,11 +7,10 @@ title: kube-controller-manager
 Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 组成，是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，
 ，发现故障自动修复，确保集群处于预期的工作状态。
 
-
 <img src="../imgs/controller-manager.png" width="70%">
 
-
 `kube-controller-manager` 由一系列的控制器组成：
+
 - Replication Controller
 - Node Controller
 - CronJob Controller
@@ -29,8 +28,8 @@ Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 
 - Volume Controller
 - Resource quota Controller
 
-
 ## 示例
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -97,6 +96,7 @@ spec:
 ```
 
 ## Repliaction Controller
+
 k8s 中除了副本控制器叫做 Repliaction Controller，另外还有一个资源对象也叫 Repliaction Controller。这里将资源对象简称 RC。
 Repliaction Controller 指副本控制器。
 
@@ -111,6 +111,7 @@ pod 的重启策略 RestartPolicy=Always 时，才会被 Repliaction Controller 
 有一个以上的副本时，Repliaction Controller 可以逐个替换 pod 实现滚动更新。
 
 ## Node Controller
+
 kubelet 在启动时，向 API server 注册节点信息，并定时向 API server 汇报节点状态。API server 负责将节点信息更新到 ETCD。
 
 Node Controller 通过 API server 实时获取 Node 信息，监控和管理所有 Node 节点。

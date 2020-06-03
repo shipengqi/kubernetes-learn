@@ -3,6 +3,7 @@ title: Pod 简介
 ---
 
 # Pod
+
 Pod 是 Kubernetes 中调度的最基本单位。`kube-controller-manager` 就是用来控制 Pod 的状态和生命周期的。
 
 Pod 中封装着应用的容器（有的情况下是好几个容器），存储、独立的网络 IP，管理容器如何运行的策略选项。Pod 代表着部署的一个单位：kubernetes 中应用的一个实例，
@@ -30,8 +31,57 @@ Pod 的两种使用方式：
 
 每个 Pod 都是一个应用实例。如果要运行多个 Pod 实例，在 Kubernetes 中，这通常被称为 `replication`。
 
+## 为什么需要 pod
+操作系统里，很多进程并不是独自运行的，而是以进程组的方式组织在一起。
+对于操作系统来说，进程组更方便管理。
+
+例如，Linux 操作系统只需要将信号，比如，SIGKILL 信号，发送给一个进程组，那么该进程组中的所有进程就都会收到这个信号而终止运行。
+
+Kubernetes 项目所做的，其实就是将“进程组”的概念映射到了容器技术中，并使其成为了这个云计算“操作系统”里的“一等公民”。
+
+
+关于 **Pod 最重要的一个事实是：它只是一个逻辑概念**。Kubernetes 真正处理的，还是宿主机操作系统上 Linux 容器的 Namespace 和 Cgroups，而
+**并不存在一个所谓的 Pod 的边界或者隔离环境**。
+
+**Pod，其实是一组共享了某些资源的容器。Pod 里的所有容器，共享的是同一个 Network Namespace，并且可以声明共享同一个 Volume**。
+
+这好像通过 docker run --net --volumes-from 这样的命令就能实现嘛，比如：
+```sh
+$ docker run --net=B --volumes-from=B --name=A image-A ...
+```
+但是，如果这样做的话，容器 B 就必须比容器 A 先启动，这样一个 Pod 里的多个容器就不是对等关系，而是拓扑关系了。
+
+### Infra 容器
+在 Kubernetes 项目里，Pod 的实现需要使用一个中间容器，这个容器叫作 **Infra 容器**。
+
+Pod 中，Infra 容器永远都是第一个被创建的容器，而其他用户定义的容器，则通过 Join Network Namespace 的方式，与 Infra 容器关联在一起。
+
+Infra 容器占用极少的资源，它使用的是一个非常特殊的镜像，叫作：`k8s.gcr.io/pause`。这个镜像是一个用汇编语言编写的、永远处于“暂停”状态的
+容器，解压后的大小也只有 100~200 KB 左右。
+ 
+在 Infra 容器“Hold 住”Network Namespace 后，用户容器就可以加入到 Infra 容器的 Network Namespace 当中了。
+查看这些容器在宿主机上的 Namespace 文件，它们指向的值一定是完全一样的。
+
+这就意味着，对于 Pod 里的容器 A 和容器 B 来说：
+
+- 它们可以直接使用 localhost 进行通信；
+- 它们看到的网络设备跟 Infra 容器看到的完全一样；
+- 一个 Pod 只有一个 IP 地址，也就是这个 Pod 的 Network Namespace 对应的 IP 地址；
+- 当然，其他的所有网络资源，都是一个 Pod 一份，并且被该 Pod 中的所有容器共享；
+- Pod 的生命周期只跟 Infra 容器一致，而与容器 A 和 B 无关。
+
+对于同一个 Pod 里面的所有用户容器来说，它们的进出流量，也可以认为都是通过 Infra 容器完成的。
+
+有了这个设计之后，共享 Volume 就简单多了：Kubernetes 项目只要把所有 Volume 的定义都设计在 Pod 层级即可。
+
+这样，一个 Volume 对应的宿主机目录对于 Pod 来说就只有一个，Pod 里的容器只要声明挂载这个 Volume，就一定可以共享这个 Volume 对应的宿主机目录。
+
+## NodeName 
+一旦 Pod 的这个字段被赋值，Kubernetes 项目就会被认为这个 Pod 已经经过了调度，调度的结果就是赋值的节点名字。
+一般由调度器负责设置，但用户也可以设置它来“骗过”调度器，当然这个做法一般是在测试或者调试的时候才会用到。
+
 ## RestartPolicy
-支持三种 RestartPolicy：
+Pod 支持三种 RestartPolicy：
 - `Always`：只要退出就重启
 - `OnFailure`：失败退出（exit code 不等于 0）时重启
 - `Never`：只要退出就不再重启
@@ -281,6 +331,7 @@ spec:
     - "/etc/hosts"
 ```
 
+HostAliases 定义了 Pod 的 hosts 文件（比如 `/etc/hosts`）里的内容：
 ```sh
 $ kubectl logs hostaliases-pod
 # Kubernetes-managed hosts file.
@@ -296,6 +347,8 @@ fe00::2    ip6-allrouters
 10.1.2.3    foo.remote
 10.1.2.3    bar.remote
 ```
+
+
 ## 一个 Pod 管理多个容器
 同一个 Pod 中的容器会自动的分配到同一个 node 上。同一个 Pod 中的容器共享资源、网络环境和依赖，它们总是被同时调度。
 Pod中可以共享两种资源：网络和存储。如：

@@ -2,14 +2,29 @@
 title: StatefulSet
 ---
 
-# StatefulSet
-StatefulSet 是为了解决有状态服务的问题（对应 Deployments 和 ReplicaSets 是为无状态服务而设计），其应用场景包括：
+对于 Deployment 来说，一个应用的所有 Pod，是完全一样的。所以，它们互相之间没有顺序，也无所谓运行在哪台宿主机上。需要的时候，Deployment 就可以
+通过 Pod 模板创建新的 Pod；不需要的时候，Deployment 就可以“杀掉”任意一个 Pod。
+
+但是实际的场景中，并不是所有的应用都可以满足这样的要求。
+
+尤其是分布式应用，它的多个实例之间，往往有依赖关系，比如：主从关系、主备关系。
+
+还有数据存储类应用，它的多个实例，往往都会在本地磁盘上保存一份数据。而这些实例一旦被杀掉，即便重建出来，实例与数据之间的对应关系也已经丢失，从而导致应用失败。
+
+这种实例之间有不对等关系，以及实例对外部数据有依赖关系的应用，就被称为**有状态应用**（Stateful Application）。
+
+StatefulSet 的设计非常容易理解。它把真实世界里的应用状态，抽象为了两种情况：
+
+1. 拓扑状态。这种情况下，应用的多个实例之间不是完全对等的关系。这些应用实例，必须按照某些顺序启动，比如应用的主节点 A 要先于从节点 B 启动。如果把 A 和 B 两个 Pod 删除掉，它们再次被创建出来时也必须严格按照这个顺序才行。并且，新创建出来的 Pod，必须和原来 Pod 的网络标识一样，这样原先的访问者才能使用同样的方法，访问到这个新 Pod。
+2. 存储状态。这种情况意味着，应用的多个实例分别绑定了不同的存储数据。对于这些应用实例来说，Pod A 第一次读取到的数据，和隔了十分钟之后再次读取到的数据，应该是同一份，哪怕在此期间 Pod A 被重新创建过。
+
+其应用场景包括：
 
 - 稳定的持久化存储，即 Pod 重新调度后还是能访问到相同的持久化数据，基于 PVC 来实现
 - 稳定的网络标志，即 **Pod 重新调度后其 PodName 和 HostName 不变**，基于 [Headless Service](../service-discovery.html)（即没有 Cluster IP 的 Service）来实现
-- 有序部署，有序扩展，即 Pod 是有顺序的，在部署或者扩展的时候要依据定义的顺序依次依次进行（即从 0 到 N-1，在下一个 Pod 运行之前所有之前
+- **有序部署**，有序扩展，即 Pod 是有顺序的，在部署或者扩展的时候要依据定义的顺序依次依次进行（即从 0 到 N-1，在下一个 Pod 运行之前所有之前
 的 Pod 必须都是 Running 和 Ready 状态），基于 init containers 来实现
-- 有序收缩，有序删除（即从 N-1 到 0）
+- **有序收缩**，有序删除（即从 N-1 到 0）
 
 从上面的应用场景可以发现，StatefulSet 由以下几个部分组成：
 
@@ -18,19 +33,24 @@ StatefulSet 是为了解决有状态服务的问题（对应 Deployments 和 Rep
 - 定义具体应用的 StatefulSet
 
 StatefulSet 中每个 Pod 的 DNS 格式为 `statefulSetName-{0..N-1}.serviceName.namespace.svc.cluster.local`，其中：
+
 - `serviceName` 为 Headless Service 的名字
 - `0..N-1` 为 Pod 所在的序号，从 0 开始到 N-1
 - `statefulSetName` 为 StatefulSet 的名字
-- `namespac`e 为服务所在的 `namespace`，Headless Service 和 StatefulSet 必须在相同的 `namespace`
+- `namespace` 为服务所在的 `namespace`，Headless Service 和 StatefulSet 必须在相同的 `namespace`
 - `.cluster.local` 为 Cluster Domain
 
+StatefulSet 的核心功能，就是**通过某种方式记录这些状态，然后在 Pod 被重新创建时，能够为新 Pod 恢复这些状态**。
+
 ## 限制
+
 - 推荐在 Kubernetes v1.9 或以后的版本中使用
 - 所有 Pod 的 Volume 必须使用 PersistentVolume 或者是管理员事先创建好
 - 为了保证数据安全，删除 StatefulSet 时不会删除 Volume
 - StatefulSet 需要一个 Headless Service 来定义 DNS domain，需要在 StatefulSet 之前创建好
 
 ## 组件
+
 下面的示例中描述了 StatefulSet 中的组件。
 
 - 一个名为 nginx 的 headless service，用于控制网络域。
@@ -134,6 +154,7 @@ Address 1: 10.244.2.10
 ```
 
 其他操作：
+
 ```sh
 # 扩容
 $ kubectl scale statefulset web --replicas=5
@@ -153,12 +174,15 @@ $ kubectl delete pvc www-web-0 www-web-1
 ```
 
 ## 更新 StatefulSet
+
 v1.7 + 支持 StatefulSet 的自动更新，通过 `spec.updateStrategy` 设置更新策略。目前支持两种策略
+
 - `OnDelete`：当 `.spec.template` 更新时，并不立即删除旧的 Pod，而是等待用户手动删除这些旧 Pod 后自动创建新 Pod。这是默认的更新策略，兼容 v1.6 版本的行为
 - `RollingUpdate`：当 `.spec.template` 更新时，自动删除旧的 Pod 并创建新 Pod 替换。在更新时，这些 Pod 是按逆序的方式进行，依次删除、创建并等
 待 Pod 变成 Ready 状态才进行下一个 Pod 的更新。
 
 ### Partitions
+
 RollingUpdate 还支持 Partitions，通过 `.spec.updateStrategy.rollingUpdate.partition` 来设置。当 `partition` 设置后，只有序号大于或等于 `partition` 的 Pod 会
 在 `.spec.template` 更新的时候滚动更新。具有小于分区的序数的所有 Pod 将不会被更新，即使删除它们也将被重新创建。
 如果 StatefulSet 的 `.spec.updateStrategy.rollingUpdate.partition` 大于其 `.spec.replicas`，则其 `.spec.template` 的更新将不会传播到 Pod。
@@ -186,7 +210,9 @@ web-2     1/1       Running             0          18s
 ```
 
 ## Pod 管理策略
+
 v1.7 + 可以通过 `.spec.podManagementPolicy` 设置 Pod 管理策略，支持两种方式
+
 - `OrderedReady`：默认的策略，按照 Pod 的次序依次创建每个 Pod 并等待 Ready 之后才创建后面的 Pod
 - `Parallel`：并行创建或删除 Pod（不等待前面的 Pod Ready 就开始创建所有的 Pod）
 
@@ -240,6 +266,7 @@ spec:
 ```
 
 可以看到，所有 Pod 是并行创建的：
+
 ```sh
 $ kubectl create -f webp.yaml
 service "nginx" created
@@ -258,6 +285,7 @@ web-1     1/1       Running             0         10s
 ```
 
 ### zookeeper
+
 ```yml
 ---
 apiVersion: v1
@@ -423,4 +451,9 @@ spec:
       resources:
         requests:
 ```
+
 详细的使用说明见 [zookeeper stateful application](https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/)。
+
+## Pod 网络标识的稳定性
+
+## 存储状态的管理

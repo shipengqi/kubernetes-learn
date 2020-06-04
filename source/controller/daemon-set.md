@@ -2,8 +2,9 @@
 title: DaemonSet
 ---
 
-# DaemonSet
+
 DaemonSet 保证在每个 Node 上都运行一个 Pod 副本，常用来部署一些集群的日志、监控或者其他系统管理应用。典型的应用包括：
+
 - 日志收集，比如 fluentd，logstash 等
 - 系统监控，比如 Prometheus Node Exporter，collectd，New Relic agent，Ganglia gmond 等
 - 系统程序，比如 kube-proxy, kube-dns, glusterd, ceph 等
@@ -11,7 +12,9 @@ DaemonSet 保证在每个 Node 上都运行一个 Pod 副本，常用来部署�
 **需要 Pod 副本总是运行在全部或特定主机上，并需要先于其他 Pod 启动，当这被认为非常重要时，应该使用 Daemon Controller**。
 
 ## 示例
+
 `coredns`：
+
 ```yml
 apiVersion: extensions/v1beta1
 kind: DaemonSet
@@ -99,80 +102,12 @@ spec:
       dnsPolicy: Default
 ```
 
-
-`kubernetes-vault`：
-```yml
-apiVersion: extensions/v1beta1
-kind: DaemonSet
-metadata:
-  name: kubernetes-vault
-  namespace: {KUBE_SYSTEM_NAMESPACE}
-spec:
-  updateStrategy:
-    type: RollingUpdate
-  template:
-    metadata:
-      labels:
-        run: kubernetes-vault
-    spec:
-      serviceAccountName: kubernetes-vault
-      {IMAGE_PULL_SECRETS}
-      securityContext:
-        runAsUser: {SYSTEM_USER_ID}
-      nodeSelector:
-        {NODESELECT}
-      initContainers:
-      - name: dependence
-        image: {DOCKER_REPOSITORY}/{REGISTRY_ORGNAME}/{IMAGE_ITOM_BUSYBOX}
-        command: ['sh', '-c', 'until nc -vz kube-dns.kube-system 53 -w 10 && nc -vz itom-vault 8200 -w 10; do echo waiting for kube-dns and vault; sleep 2; done;']
-      containers:
-      - name: kubernetes-vault
-        image: {DOCKER_REPOSITORY}/{REGISTRY_ORGNAME}/{IMAGE_KUBERNETES_VAULT}
-        resources:
-          limits:
-            cpu: 500m
-            memory: 500Mi
-          requests:
-            cpu: 100m
-            memory: 100Mi
-        env:
-        - name: VAULT_ADDR
-          value: https://itom-vault.{KUBE_SYSTEM_NAMESPACE}:8200
-        - name: KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: KUBERNETES_SERVICE
-          value: kubernetes-vault
-        - name: VAULT_CA_BACKENDS
-          value: RIC
-        - name: RAFT_DIR
-          value: /raft-dir
-        volumeMounts:
-        - name: raft-dir
-          mountPath: /raft-dir
-        livenessProbe:
-          httpGet:
-            path: /status
-            port: 8898
-          initialDelaySeconds: 180
-          periodSeconds: 10
-          timeoutSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /status
-            port: 8898
-          periodSeconds: 5
-          timeoutSeconds: 3
-      volumes:
-      - name: raft-dir
-        emptyDir: {}
-```
-
 ## 编写 DaemonSet Spec
+
 DaemonSet 需要 `apiVersion`、`kind`、`metadata` 和 `spec` 字段。
 
 ### Pod 模板
+
 `.spec` 唯一必需的字段是 `.spec.template`。`.spec.template` 是一个 Pod 模板。 它与 Pod 具有相同的 schema。
 不具有 `apiVersion` 或 `kind` 字段。
 
@@ -184,6 +119,7 @@ Pod 除了必须字段外，在 DaemonSet 中的 Pod 模板必须指定合理的
 如果与它们配置的不匹配，则会被 API 拒绝。
 
 ## Daemon Pod 调度
+
 如果指定了 `.spec.template.spec.nodeSelector`，DaemonSet Controller 将在能够匹配上 Node Selector 的 Node 上创建 Pod。
 类似这种情况，可以指定 `.spec.template.spec.affinity`。
 
@@ -195,18 +131,22 @@ Pod 除了必须字段外，在 DaemonSet 中的 Pod 模板必须指定合理的
 
 Daemon Pod 关心 [Taint 和 Toleration](../cluster/taint.html)。
 
-
 ## 滚动更新
+
 v1.6 + 支持 DaemonSet 的滚动更新，可以通过 `.spec.updateStrategy.type` 设置更新策略。目前支持两种策略
+
 - `OnDelete`：默认策略，更新模板后，只有手动删除了旧的 Pod 后才会创建新的 Pod
 - `RollingUpdate`：更新 DaemonSet 模版后，自动删除旧的 Pod 并创建新的 Pod
 
 在使用 RollingUpdate 策略时，还可以设置
+
 - `.spec.updateStrategy.rollingUpdate.maxUnavailable`, 默认 `1`
 - `spec.minReadySeconds`，默认 `0`
 
 ## 回滚
+
 v1.7 + 支持回滚
+
 ```sh
 # 查询历史版本
 $ kubectl rollout history daemonset <daemonset-name>
@@ -219,3 +159,5 @@ $ kubectl rollout undo daemonset <daemonset-name> --to-revision=<revision>
 # 查询回滚状态
 $ kubectl rollout status ds/<daemonset-name>
 ```
+
+## 如何保证每个 Node 上有且只有一个被管理的 Pod

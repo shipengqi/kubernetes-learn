@@ -2,8 +2,6 @@
 title: ReplicaSet
 ---
 
-# ReplicaSet
-
 ReplicationController（也简称为 rc）用来确保容器应用的副本数始终保持在用户定义的副本数，即如果有容器异常退出，会自动创建新的 Pod 来替代；而异常多出来的容器也会自动回收。
 
 新版本的 Kubernetes 中建议使用 ReplicaSet（也简称为 rs）来取代 ReplicationController。ReplicaSet 跟 ReplicationController 没有本质的不同，只是 ReplicaSet 支持集
@@ -12,6 +10,7 @@ ReplicationController（也简称为 rc）用来确保容器应用的副本数�
 ReplicaSet 可以独立使用，但建议使用 Deployment 来自动管理 ReplicaSet，这样就无需担心跟其他机制的不兼容问题（比如 ReplicaSet 不支持 `rolling-update` 但 Deployment 支持）。
 
 ## 示例
+
 ```yml
 apiVersion: extensions/v1beta1
 kind: ReplicaSet

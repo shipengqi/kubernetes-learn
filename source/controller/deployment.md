@@ -4,16 +4,20 @@ title: Deployment
 
 Deployment 为 Pod 和 ReplicaSet 提供了一个声明式定义 (declarative) 方法，用来替代以前的 ReplicationController 来方便的管理应用。
 
-典型的用例：
+**Deployment 控制器实际操纵的，是 ReplicaSet 对象，而不是 Pod 对象**。
 
-- Deployment 来创建 ReplicaSet。ReplicaSet 在后台创建 pod。检查启动状态，看它是成功还是失败。
-- 然后，通过更新 Deploymen t的 PodTemplateSpec 字段来声明 Pod 的新状态。这会创建一个新的 ReplicaSet，Deployment 会按照控制的速率将
-pod 从旧的 ReplicaSet 移动到新的 ReplicaSet 中。
-- 如果当前状态不稳定，回滚到之前的 Deployment revision。每次回滚都会更新 Deployment 的 revision。
-- 扩容 Deployment 以满足更高的负载。
-- 暂停 Deployment 来应用 PodTemplateSpec 的多个修复，然后恢复上线。
-- 根据 Deployment 的状态判断上线是否 hang 住了。
-- 清除旧的不必要的 ReplicaSet。
+**一个 ReplicaSet 对象，其实就是由副本数目的定义和一个 Pod 模板组成的**。
+
+Deployment，与 ReplicaSet，以及 Pod 的关系：
+
+![deploy-repalicas-pod](../imgs/deploy-repalicas-pod.png)
+
+Deployment，与它的 ReplicaSet，以及 Pod 的关系，实际上是一种“层层控制”的关系。
+
+ReplicaSet 负责通过“控制器模式”，保证系统中 Pod 的个数永远等于指定的个数。这也正是 **Deployment 只允许容器的 restartPolicy=Always** 的主要原因：只有在
+容器能保证自己始终是 Running 状态的前提下，ReplicaSet 调整 Pod 的个数才有意义。
+
+Deployment 同样通过“控制器模式”，来操作 ReplicaSet 的个数和属性，进而实现“水平扩展/收缩”和“滚动更新”。“水平扩展/收缩” 只需要修改它所控制的 ReplicaSet 的 Pod 副本个数就可以了。将一个集群中正在运行的多个 Pod 版本，交替地逐一升级的过程，就是“滚动更新”。
 
 ## 创建 Deployment
 
@@ -249,32 +253,25 @@ deployment "nginx-deployment" autoscaled
 
 ### 比例扩容
 
-RollingUpdate Deployment 支持同时运行一个应用的多个版本。当你或者 autoscaler 扩容一个正在 rollout 中（进行中或者已经暂停）的 RollingUpdate Deployment 的时候，
-为了降低风险，Deployment controller 将会平衡已存在的 active 的 ReplicaSets（有 Pod 的 ReplicaSets）和新加入的 replicas。这被称为比例扩容。
+为了保证服务的连续性，Deployment Controller 会确保，在任何时间窗口内，只有指定比例的 Pod 处于离线状态。同时，它也会确保，在任何时间窗口内，
+只有指定比例的新 Pod 被创建出来。这两个比例的值都是可以配置的，默认都是 DESIRED 值的 25%。这被称为比例扩容。
 
-例如，你正在运行中含有 10 个 replica 的 Deployment。`maxSurge=3`，`maxUnavailable=2`。
+例如，一个 Deployment 有 3 个 Pod 副本，那么控制器在“滚动更新”的过程中永远都会确保至少有 2 个 Pod 处于可用状态，至多只有 4 个 Pod 同时存在于集群中。
 
-```sh
-$ kubectl get deploy
-NAME                 DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-nginx-deployment     10        10        10           10          50s
+这个策略，是 Deployment 对象的一个字段，叫 RollingUpdateStrategy。
+
+```yml
+strategy:
+type: RollingUpdate
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 1
 ```
 
-你更新了一个镜像，而在集群内部无法解析。
+`maxSurge` 指定的是除了 DESIRED 数量之外，在一次“滚动”中，Deployment 控制器还可以创建多少个新 Pod。
+`maxUnavailable` 指的是，在一次“滚动”中，Deployment 控制器可以删除多少个旧 Pod。
 
-```sh
-$ kubectl set image deploy/nginx-deployment nginx=nginx:sometag
-deployment "nginx-deployment" image updated
-```
-
-镜像更新启动了一个包含 ReplicaSet `nginx-deployment-1989198191` 的新的 rollout，但是它被阻塞了，因为我们上面提到的 `maxUnavailable`。
-
-```sh
-$ kubectl get rs
-NAME                          DESIRED   CURRENT   READY     AGE
-nginx-deployment-1989198191   5         5         0         9s
-nginx-deployment-618515232    8         8         8         1m
-```
+这两个配置还可以用百分比形式来表示，比如：`maxUnavailable=50%`，指的是最多可以一次删除“50%*DESIRED 数量”个 Pod。
 
 ## 暂停和恢复 Deployment
 

@@ -2,11 +2,11 @@
 title: StorageClass
 ---
 
-# StorageClass
 
 StorageClass 来动态创建 PV，不仅节省了管理员的时间，还可以封装不同类型的存储供 PVC 选用。
 
 StorageClass 中包含以下四个字段，当 class 需要动态分配 PersistentVolume 时会使用到。
+
 - `provisioner`：存储分配器，用来决定使用哪个卷插件分配 PV。该字段必须指定。
 - `parameters`：描述属于 storage class 卷的参数。取决于分配器，可以接受不同的参数。
 - `mountOptions`：挂载选项，如果卷插件不支持挂载选项，却指定了该选项，则分配操作失败。

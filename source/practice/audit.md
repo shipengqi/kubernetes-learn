@@ -2,14 +2,16 @@
 title: 审计日志
 ---
 
-# 审计日志
 Kubernetes 审计（Audit）提供了安全相关的时序操作记录，可以记录所有对 apiserver 接口的调用，让我们能够非常清晰的知道集群到底发生了什么事情，通过记录的日志可以查到所发生的事件、操作的用户和时间。
 
 支持**日志**和 **webhook** 两种格式，并可以通过审计策略自定义事件类型。
 
 ## 审计日志的策略
+
 ### 日志记录阶段
+
 kube-apiserver 是负责接收及响应用户请求的一个组件，每一个请求都会有几个阶段，每个阶段都有对应的日志，当前支持的阶段有：
+
 - RequestReceived - apiserver 在接收到请求后且在将该请求下发之前会生成对应的审计日志。
 - ResponseStarted - 在响应 header 发送后并在响应 body 发送前生成日志。这个阶段仅为长时间运行的请求生成（例如 watch）。
 - ResponseComplete - 当响应 body 发送完并且不再发送数据。
@@ -18,6 +20,7 @@ kube-apiserver 是负责接收及响应用户请求的一个组件，每一个�
 也就是说 apiserver 的每一个请求理论上会有三个阶段的审计日志生成。
 
 ### 日志记录级别
+
 当前支持的日志记录级别有：
 
 - None - 不记录日志。
@@ -26,6 +29,7 @@ kube-apiserver 是负责接收及响应用户请求的一个组件，每一个�
 - RequestResponse - 最全记录方式，会记录所有的 metadata、Request 和 Response 的 body。
 
 ### 日志记录策略
+
 启用审计日志会增加 apiserver 对内存的使用量。记录日志的时尽量只记录所需要的信息，避免造成系统资源的浪费。
 
 - 一个请求不要重复记录，每个请求有三个阶段，只记录其中需要的阶段
@@ -36,6 +40,7 @@ kube-apiserver 是负责接收及响应用户请求的一个组件，每一个�
 可以使用 `--audit-policy-file` 标志将包含策略的文件传递给 kube-apiserver。如果不设置该标志，则不记录事件。 注意 **`rules` 字段必须在审计策略文件中提供**。
 
 审计策略文件的示例：
+
 ```yml
 apiVersion: audit.k8s.io/v1beta1 # This is required.
 kind: Policy
@@ -297,6 +302,7 @@ rules:
 ```
 
 可以使用最低限度的审计策略文件在 Metadata 级别记录所有请求：
+
 ```yml
 # Log all requests at the Metadata level.
 apiVersion: audit.k8s.io/v1beta1
@@ -306,11 +312,14 @@ rules:
 ```
 
 ## 审计后端
+
 审计存储后端支持两种方式
+
 - Log 后端
 - Webhook 后端
 
 ### Log 后端
+
 Log 后端将审计事件写入 JSON 格式的文件。使用以下 kube-apiserver 标志配置 Log 审计后端：
 
 - `--audit-log-path` 指定用来写入审计事件的日志文件路径。**不指定此标志会禁用日志后端**。`-` 意味着标准化
@@ -319,6 +328,7 @@ Log 后端将审计事件写入 JSON 格式的文件。使用以下 kube-apiserv
 - `--audit-log-maxsize` 定义审计日志文件的最大大小（兆字节）
 
 Log 配置文件示例：
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -358,19 +368,24 @@ spec:
 ```
 
 上面的示例中由于 pod 的 user 是 `1999`，所以 `/var/log/kube-audit` 的 owner 也必须是 `1999`，否则会报 `permission denied`，像下面的错误：
+
 ```sh
 kube-apiserver[1574]: E1105 18:43:54.090393 1574 metrics.go:86] Error in audit plugin 'log' affecting 1 audit
  events: can't open new logfile: open /var/lib/audit.log: permission denied
 ```
+
 可以使用 `chown` 命令。
 
 ### Webhook 后端
+
 Webhook 配置文件实际上是一个 `kubeconfig` 文件，apiserver 会将审计日志发送到指定的 webhook 后，webhook 接收到日志后可以再分发到 kafka 或其他组件进行收集。
 使用如下 `kube-apiserver` 标志来配置 webhook 审计后端：
+
 - `--audit-webhook-config-file` webhook 配置文件的路径。
 - `--audit-webhook-initial-backoff` 指定在第一次失败后重发请求等待的时间。随后的请求将以指数退避重试。
 
 Webhook 配置文件示例：
+
 ```yml
 # clusters refers to the remote service.
 clusters:
@@ -412,6 +427,7 @@ users: []
 ```
 
 所有的事件以 JSON 格式 POST 给 webhook server，如
+
 ```js
 {
   "kind": "EventList",
@@ -453,6 +469,7 @@ users: []
 ```
 
 #### webhook 的一个简单示例
+
 ```go
 package main
 
@@ -511,13 +528,16 @@ func AuditWebhook(req *restful.Request, resp *restful.Response) {
 ```
 
 ### Batching
+
 log 和 webhook 后端都支持 batch。 默认情况下，在 webhook 中启用 batch，在 log 中禁用 batch。同样，默认情况下，在 webhook 中启用限制，在 log 中禁用限制。
 以 webhook 为例，以下是可用参数列表。要**获取 log 后端的同样参数，在参数名称中将 `webhook` 替换为 `log`**：
+
 - `--audit-webhook-mode` 定义缓存策略，可选值如下：
   - `batch` - 以批处理缓存事件和异步的过程。这是默认值。
   - `blocking` - 阻止 API server 处理每个单独事件的响应。
 
 以下参数仅用于 batch 模式：
+
 - `--audit-webhook-batch-buffer-size` 定义 batch 之前要缓存的事件数。 如果传入事件的速率溢出缓存区，则会丢弃事件。
 - `--audit-webhook-batch-max-size` 定义一个 batch 中的最大事件数。
 - `--audit-webhook-batch-max-wait` 无条件 batch 队列中的事件前等待的最大事件。

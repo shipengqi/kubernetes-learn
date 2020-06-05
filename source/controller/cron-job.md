@@ -2,7 +2,7 @@
 title: CronJob
 ---
 
-# CronJob
+
 CronJob 即定时任务，管理基于时间的 [Job](./job.html)，类似于 Linux 系统的 crontab，在指定的时间周期运行指定的任务。
 
 ## 开启 CronJob
@@ -11,16 +11,19 @@ CronJob 即定时任务，管理基于时间的 [Job](./job.html)，类似于 Li
 大于 1.8 的版本可以直接使用。
 
 ## 使用场景
+
 - 在给定的时间点调度 Job 运行
 - 创建周期性运行的 Job，例如：数据库备份、发送邮件。
 
 ## CronJob Spec
+
 - `.spec.jobTemplate` 指定需要运行的任务，格式同 [Job](./job.html)
 - `.spec.schedule` 指定任务运行周期，格式同 [Cron](https://en.wikipedia.org/wiki/Cron)
 - `.spec.startingDeadlineSeconds` 指定任务启动的期限
 - `.spec.concurrencyPolicy` 指定任务的并发策略，支持 Allow、Forbid 和 Replace 三个选项
 
 `cronjob.yaml`：
+
 ```yml
 apiVersion: batch/v1beta1
 kind: CronJob
@@ -70,9 +73,11 @@ cronjob "hello" deleted
 ## Cron Job 限制
 
 ### 启动 Job 的期限（秒级别）
+
 `.spec.startingDeadlineSeconds` 字段是可选的。它表示启动 Job 的期限（秒级别），如果因为任何原因而错过了被调度的时间，那么错过执行时间的 Job 将被认为是失败的。如果没有指定，则没有期限。
 
 ### 并发策略
+
 `.spec.concurrencyPolicy` 字段也是可选的。它指定了如何处理被 Cron Job 创建的 Job 的并发执行。只允许指定下面策略中的一种：
 
 - Allow（默认）：允许并发运行 Job
@@ -82,6 +87,7 @@ cronjob "hello" deleted
 注意，当前策略只能应用于同一个 Cron Job 创建的 Job。如果存在多个 Cron Job，它们创建的 Job 之间总是允许并发运行。
 
 ### 挂起
+
 `.spec.suspend` 字段也是可选的。如果设置为 `true`，后续所有执行都将被挂起。它对已经开始执行的 Job 不起作用。默认值为 `false`。
 
 ### Job 历史限制

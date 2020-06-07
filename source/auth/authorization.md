@@ -2,11 +2,11 @@
 title: 授权
 ---
 
-# 授权
-
 ## ABAC
+
 使用 ABAC（Attribute Based Access Control）授权需要在启动 API Server 时配置 `--authorization-policy-file=SOME_FILENAME` 和 `--authorization-mode=ABAC`，
 文件格式为每行一个 `policy` 对象，比如
+
 ```js
 {
     "apiVersion": "abac.authorization.kubernetes.io/v1beta1",
@@ -41,11 +41,14 @@ title: 授权
 参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/abac/)
 
 ## RBAC
+
 参考[这里](./rbac.html)
 
 ## WebHook 授权
+
 使用 WebHook 授权需要 API Server 配置 `--authorization-webhook-config-file=<file>` 和 `--runtime-config=authorization.k8s.io/v1beta1=true`，
 配置文件格式同 `kubeconfig`，如
+
 ```yml
 # clusters refers to the remote service.
 clusters:
@@ -77,4 +80,5 @@ contexts:
 参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/webhook/)
 
 ## Node 授权
+
 参考[这里](https://kubernetes.io/docs/reference/access-authn-authz/node/)

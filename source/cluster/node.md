@@ -2,14 +2,15 @@
 title: Node
 ---
 
-# Node
 Node 是 Pod 真正运行的主机，可以是物理机也可以是虚拟机。每个 Node 节点上至少要运行 container runtime（比如 `docker` 或者 `rkt`）、`kubelet` 和 `kube-proxy` 服务。
 
 ## Node 管理
+
 Node 本质上不是 Kubernetes 来创建的，Kubernetes 只是管理 Node 上的资源。虽然可以通过 Manifest 创建一个 Node 对象（如下 yaml 所示），但 Kubernetes 也只是去
 检查是否真的是有这么一个 Node，如果检查失败，也不会往上调度 Pod。
 
 这个检查是由 Node Controller 来完成的。Node Controller 负责
+
 - 维护 Node 状态
 - 与 Cloud Provider 同步 Node
 - 给 Node 分配容器 CIDR
@@ -27,11 +28,13 @@ metadata:
 ```
 
 禁止 pod 调度到该节点上：
+
 ```sh
 kubectl cordon <node>
 ```
 
 驱逐该节点上的所有 pod：
+
 ```sh
 kubectl drain <node>
 ```
@@ -40,7 +43,9 @@ kubectl drain <node>
 当该节点维护完成，启动了 kubelet 后，再使用 `kubectl uncordon <node>` 即可将该节点添加到 kubernetes 集群中。
 
 ## Node 状态
+
 每个 Node 都包括以下状态信息：
+
 - Addresses
   - HostName：节点内核报告的主机名，可以被 `kubelet` 中的 `--hostname-override` 参数替代。
   - ExternalIP：可以被集群外部路由到的 IP 地址。

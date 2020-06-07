@@ -2,12 +2,12 @@
 title: kubectl
 ---
 
-# kubectl
-
 kubectl 是 Kubernetes 的命令行工具（CLI）。提供了大量的子命令，方便管理 Kubernetes 集群中的各种功能。
 
 ## 配置
+
 使用 kubectl 的第一步是配置 Kubernetes 集群以及认证方式，包括
+
 - cluster 信息：Kubernetes server 地址
 - 用户信息：用户名、密码或密钥
 - Context：cluster、用户信息以及 Namespace 的组合
@@ -28,6 +28,7 @@ kubectl config use-context kubelet-to-kubernetes
 ```
 
 ## 常用命令格式
+
 - 创建：`kubectl run <name> --image=<image>` 或者 `kubectl create -f manifest.yaml`
 - 查询：`kubectl get <resource>`
 - 更新 `kubectl set` 或者 `kubectl patch`
@@ -37,10 +38,10 @@ kubectl config use-context kubelet-to-kubernetes
 - 容器日志：`kubectl logs [-f] <pod-name>`
 - 导出服务：`kubectl expose deploy <name> --port=80`
 - Base64 解码：
+
 ```sh
 kubectl get secret SECRET -o go-template='{{ .data.KEY | base64decode }}'
 ```
-
 
 > `kubectl run` 仅支持 Pod、Replication Controller、Deployment、Job 和 CronJob 等几种资源。
 
@@ -79,6 +80,7 @@ kubectl get secret SECRET -o go-template='{{ .data.KEY | base64decode }}'
 - [kubectl version](#version) – 输出服务端和客户端的版本信息。
 
 ### annotate
+
 更新一个或多个资源的 [Annotations](../cluster/annotation.html) 信息。
 
 - Annotations 由 `key/value` 组成。
@@ -97,6 +99,7 @@ kubectl annotate [--overwrite] (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=V
 ```
 
 示例：
+
 ```sh
 # 更新名为 "foo" 的 pod，设置其注解 description 的值为 "my frontend"。
 # 如果同一个注解被赋值了多次，只保存最后一次设置的值。
@@ -120,12 +123,15 @@ $ kubectl annotate pods foo description-
 ```
 
 ### api-versions
+
 以 “组/版本” 的格式输出服务端支持的 API 版本。
+
 ```sh
 kubectl api-versions
 ```
 
 ### apply
+
 通过文件名或控制台输入，对资源进行配置。接受 JSON 和 YAML 格式的描述文件。
 
 ```sh
@@ -139,6 +145,7 @@ kubectl apply -f FILENAME
 ```
 
 #### 示例
+
 ```sh
 # 将 pod.json 中的配置应用到 pod
 $ kubectl apply -f ./pod.json
@@ -148,7 +155,9 @@ $ cat pod.json | kubectl apply -f -
 ```
 
 ### attach
+
 连接到现有容器中一个正在运行的进程。
+
 ```sh
 kubectl attach POD -c CONTAINER
 
@@ -159,6 +168,7 @@ kubectl attach POD -c CONTAINER
 ```
 
 #### 示例
+
 ```sh
 # 获取正在运行中的pod 123456-7890的输出，默认连接到第一个容器
 $ kubectl attach 123456-7890
@@ -172,14 +182,17 @@ $ kubectl attach 123456-7890 -c ruby-container -i -t
 ```
 
 ### autoscale
+
 使用 autoscaler 自动设置在 kubernetes 集群中运行的 pod 数量（水平自动伸缩）。
 
 指定 Deployment、ReplicaSet 或 ReplicationController，并创建已经定义好资源的自动伸缩器。使用自动伸缩器可以根据需要自动增加或减少系统中部署的 pod 数量。
+
 ```sh
-$ autoscale (-f FILENAME | TYPE NAME | TYPE/NAME) [--min=MINPODS] --max=MAXPODS [--cpu-percent=CPU] [flags]
+autoscale (-f FILENAME | TYPE NAME | TYPE/NAME) [--min=MINPODS] --max=MAXPODS [--cpu-percent=CPU] [flags]
 ```
 
 #### 示例
+
 ```sh
 # 使用 Deployment "foo" 设定，使用默认的自动伸缩策略，指定目标 CPU 使用率，使其 Pod 数量在 2 到 10 之间。
 $ kubectl autoscale deployment foo --min=2 --max=10
@@ -189,6 +202,7 @@ $ kubectl autoscale rc foo --max=5 --cpu-percent=80
 ```
 
 ### cluster-info
+
 显示 master 节点的地址和包含 `kubernetes.io/cluster-service=true` 的 service（系统 service）。
 
 ```sh
@@ -196,9 +210,11 @@ kubectl cluster-info
 ```
 
 ### config
+
 修改 kubeconfig 配置文件。如 `kubectl config set current-context my-context`。
 
 配置文件的读取遵循如下规则：
+
 - 如果指定了 **`--kubeconfig`** 选项，那么只有指定的文件被加载。此选项只能被设置一次，并且不会合并其他文件。
 - 如果设置了 **`$KUBECONFIG`** 环境变量，将同时使用此环境变量指定的所有文件列表（使用操作系统默认的顺序），所有文件将被合并。当修改一个值时，
 将修改设置了该值的文件。当创建一个值时，将在列表的首个文件创建该值。若列表中所有的文件都不存在，将创建列表中的最后一个文件。
@@ -212,6 +228,7 @@ kubectl config SUBCOMMAND
 ```
 
 #### 示例
+
 ```sh
 ${K8S_HOME}/bin/kubectl config set-cluster kubernetes \
 --server=https://${K8S_APISERVER_IP}:${MASTER_API_SSL_PORT} \
@@ -229,7 +246,9 @@ ${K8S_HOME}/bin/kubectl config use-context kubelet-to-kubernetes
 ```
 
 #### kubectl config set-cluster
+
 在 `kubeconfig` 配置文件中设置一个集群项。 如果指定了一个已存在的名字，将合并新字段并覆盖旧字段。
+
 ```sh
 kubectl config set-cluster NAME \
 [--server=server] \
@@ -246,6 +265,7 @@ kubectl config set-cluster NAME \
 ```
 
 #### 示例
+
 ```sh
 # 仅设置 e2e 集群项中的 server 字段，不影响其他字段
 $ kubectl config set-cluster e2e --server=https://1.2.3.4
@@ -258,7 +278,9 @@ $ kubectl config set-cluster e2e --insecure-skip-tls-verify=true
 ```
 
 #### kubectl config set-context
+
 在 `kubeconfig` 配置文件中设置一个环境项。 如果指定了一个已存在的名字，将合并新字段并覆盖旧字段。
+
 ```sh
 kubectl config set-context NAME \
 [--cluster=cluster_nickname] \
@@ -272,12 +294,14 @@ kubectl config set-context NAME \
 ```
 
 #### 示例
+
 ```sh
 # 设置 gce 环境项中的 user 字段，不影响其他字段。
 $ kubectl config set-context gce --user=cluster-admin
 ```
 
 #### kubectl config set-credentials
+
 在 `kubeconfig` 配置文件中设置一个用户项。 如果指定了一个已存在的名字，将合并新字段并覆盖旧字段。
 
 ```sh
@@ -298,6 +322,7 @@ kubectl config set-credentials NAME \
 ```
 
 #### 示例
+
 ```sh
 # 仅设置 cluster-admin 用户项下的 client-key 字段，不影响其他值
 $ kubectl config set-credentials cluster-admin --client-key=~/.kube/admin.key
@@ -330,6 +355,7 @@ kubectl config unset PROPERTY_NAME
 ```
 
 #### kubectl config use-context
+
 使用 `kubeconfig` 中的一个环境项作为当前配置。
 
 ```sh
@@ -360,6 +386,7 @@ kubectl config view
 [golang 模板](http://golang.org/pkg/text/template/#pkg-overview)。
 
 #### 示例
+
 ```sh
 # 显示合并后的 kubeconfig 设置
 $ kubectl config view
@@ -369,6 +396,7 @@ $ kubectl config view -o template --template='{{range .users}}{{ if eq .name "e2
 ```
 
 ### convert
+
 转换配置文件为不同的 API 版本，支持 YAML 和 JSON 格式。
 
 该命令将配置文件名，目录或 URL 作为输入，并将其转换为指定的版本格式，如果目标版本未指定或不支持，则转换为最新版本。
@@ -395,6 +423,7 @@ kubectl convert -f FILENAME
 ```
 
 #### 示例
+
 ```sh
 # 将 pod.yaml 转换为最新版本
 $ kubectl convert -f pod.yaml
@@ -407,18 +436,22 @@ $ kubectl convert -f . | kubectl create -f -
 ```
 
 ### cordon
+
 将节点标记为不可调度。
+
 ```sh
 kubectl cordon NODE
 ```
 
 #### 示例
+
 ```sh
 # 将节点 foo 标记为不可调度.
 kubectl cordon foo
 ```
 
 ### cp
+
 ```sh
 kubectl cp <file-spec-src> <file-spec-dest>
 
@@ -428,6 +461,7 @@ kubectl cp <file-spec-src> <file-spec-dest>
 ```
 
 #### 示例
+
 ```sh
 # 将本地目录 /tmp/foo_dir 复制到默认名称空间中的 pod 中的 /tmp/bar_dir
 kubectl cp /tmp/foo_dir <some-pod>:/tmp/bar_dir
@@ -441,8 +475,11 @@ kubectl cp /tmp/foo <some-namespace>/<some-pod>:/tmp/bar
 # 从 pod 中的 /tmp/foo 复制到本地的 /tmp/bar
 kubectl cp <some-namespace>/<some-pod>:/tmp/foo /tmp/bar
 ```
+
 ### create
+
 通过文件名或控制台输入，创建资源。接受 JSON 和 YAML 格式的描述文件。
+
 ```sh
 kubectl create -f FILENAME
 
@@ -454,6 +491,7 @@ kubectl create -f FILENAME
 ```
 
 #### 示例
+
 ```sh
 # 使用 pod.json 文件创建一个 pod
 $ kubectl create -f ./pod.json
@@ -463,6 +501,7 @@ $ cat pod.json | kubectl create -f -
 ```
 
 #### kubectl create namespace
+
 创建一个具有指定名称的 namespace。
 
 ```sh
@@ -473,24 +512,29 @@ kubectl create namespace NAME [--dry-run]
 ```
 
 #### 示例
+
 ```sh
 # 创建一个名叫 my-namespace 的 namespace
 $ kubectl create namespace my-namespace
 ```
 
 #### kubectl create deployment
+
 创建具有指定名称的 deployment。
+
 ```sh
 kubectl create deployment NAME --image=image [--dry-run]
 ```
 
 #### 示例
+
 ```sh
 # 创建一个名为 my-dep 的 deployment，运行 busybox 镜像。
 $ kubectl create deployment my-dep --image=busybox
 ```
 
 #### kubectl create configmap
+
 根据配置文件、目录或指定的 literal-value 创建 configmap 。
 
 当基于配置文件创建 configmap 时，key 将默认为文件的基础名称，value 默认为文件文本内容。如果基本名称的 key 无效，则可以指定另一个 key。
@@ -510,9 +554,11 @@ kubectl create configmap NAME [--from-file=[key=]source] [--from-literal=key1=va
 更多参考 [ConfigMap](../storage/configmap.html)。
 
 #### kubectl create secret tls
+
 从给定的（public/private）公钥/私钥对创建 TLS secret 。
 
 公共密钥证书必须是 `.PEM` 编码并匹配指定的私钥。
+
 ```sh
 kubectl create secret tls NAME --cert=path/to/cert/file --key=path/to/key/file [--dry-run]
 
@@ -522,6 +568,7 @@ kubectl create secret tls NAME --cert=path/to/cert/file --key=path/to/key/file [
 ```
 
 #### 示例
+
 ```sh
 # 使用指定的 key 创建名为 tls-secre t的 TLS secret：
 $ kubectl create secret tls tls-secret --cert=path/to/tls.cert --key=path/to/tls.key
@@ -530,6 +577,7 @@ $ kubectl create secret tls tls-secret --cert=path/to/tls.cert --key=path/to/tls
 更多参考 [Secret](../storage/secret.html)。
 
 #### kubectl create secret generic
+
 根据配置文件、目录或指定的 `literal-value` 创建 secret。
 
 secret 可以保存为一个或多个 `key/value` 信息。
@@ -538,6 +586,7 @@ secret 可以保存为一个或多个 `key/value` 信息。
 
 当基于目录创建 secret 时，key 还是文件的基础名称，目录中有效的 key 的每个文件都被打包到 secret 中，除了常规文件之外的任何目录条目都被忽略
 (例如 subdirectories, symlinks, devices, pipes, etc)。
+
 ```sh
 kubectl create generic NAME [--type=string] [--from-file=[key=]source] [--from-literal=key1=value1] [--dry-run]
 
@@ -551,11 +600,13 @@ kubectl create generic NAME [--type=string] [--from-file=[key=]source] [--from-l
 更多参考 [Secret](../storage/secret.html)。
 
 #### kubectl create secret docker-registry
+
 创建与 Docker registries 一起使用的s ecret。
 
 Dockercfg secrets 用于对 Docker registries 进行安全认证。
 
 当使用 Docker 命令 push 镜像时，可以进行 Docker registries 认证。
+
 ```sh
 docker login DOCKER_REGISTRY_SERVER --username=DOCKER_USER --password=DOCKER_PASSWORD --email=DOCKER_EMAIL
 ```
@@ -567,8 +618,8 @@ docker login DOCKER_REGISTRY_SERVER --username=DOCKER_USER --password=DOCKER_PAS
 
 更多参考 [Secret](../storage/secret.html)。
 
-
 #### 其他
+
 ```sh
 kubectl create serviceaccount NAME [--dry-run]
 
@@ -582,6 +633,7 @@ kubectl create rolebinding NAME --clusterrole=NAME|--role=NAME \
 ```
 
 ### delete
+
 通过配置文件名、stdin、资源名称或 label 选择器来删除资源。
 
 支持 JSON 和 YAML 格式文件。可以只指定一种类型的参数：文件名、资源名称或 label 选择器。
@@ -611,6 +663,7 @@ kubectl delete ([-f FILENAME] | TYPE [(NAME | -l label | --all)])
 ```
 
 #### 示例
+
 ```sh
 # 通过 pod.json 文件中指定的资源类型和名称删除一个 pod
 $ kubectl delete -f ./pod.json
@@ -634,6 +687,7 @@ $ kubectl delete pods --all
 ### describe
 
 输出指定的一个或多个资源的详细信息。
+
 ```sh
 $ kubectl describe TYPE NAME_PREFIX
 
@@ -643,6 +697,7 @@ $ kubectl describe TYPE NAME_PREFIX
 ```
 
 #### 示例
+
 ```sh
 # 描述一个 node
 $ kubectl describe nodes kubernetes-minion-emt8.c.myproject.internal
@@ -664,6 +719,7 @@ $ kubectl describe pods frontend
 ```
 
 ### drain
+
 排空节点，准备维护。
 
 给定节点将被标记为不可调度，以防止新的 pod 调度到该节点。然后 `drain` 会删除除了 `mirror pod` （mirror pod 不能通过 API 删除）之外的所有 pods。
@@ -679,6 +735,7 @@ kubectl drain NODE
 ```
 
 #### 示例
+
 ```sh
 # 排空节点 "foo", 即使有些 pod 不是由 ReplicationController、ReplicaSet、Job 或 DaemonSet 管理的.
 $ kubectl drain foo --force
@@ -688,6 +745,7 @@ $ kubectl drain foo --grace-period=900
 ```
 
 ### edit
+
 使用系统默认编辑器编辑服务端的资源。
 
 `edit` 命令允许你直接编辑使用命令行工具获取的任何资源。此命令将打开你通过 `KUBE_EDITOR`，`GIT_EDITOR` 或者 `EDITOR` 环境变量定义的编辑器，或者直接使用 `vi`。
@@ -710,6 +768,7 @@ kubectl edit (RESOURCE/NAME | -f FILENAME)
 ```
 
 #### 示例
+
 ```sh
 # 编辑名为 docker-registry 的 service
 $ kubectl edit svc/docker-registry
@@ -722,6 +781,7 @@ $ kubectl edit svc/docker-registry --output-version=v1 -o json
 ```
 
 ### exec
+
 在容器内部执行命令。
 
 ```sh
@@ -735,6 +795,7 @@ kubectl exec POD [-c CONTAINER] -- COMMAND [args...]
 ```
 
 #### 示例
+
 ```sh
 # 默认在 pod 123456-7890 的第一个容器中运行 date 并获取输出
 $ kubectl exec 123456-7890 date
@@ -750,12 +811,15 @@ $ kubectl exec -it kubernetes-vault-bcg9x -n core -- sh -c 'more /kube*/kubernet
 ```
 
 ### explain
+
 资源文档。
+
 ```sh
 kubectl explain RESOURCE
 ```
 
 #### 示例
+
 ```sh
 # 获取资源及其字段的文档
 kubectl explain pods
@@ -765,6 +829,7 @@ kubectl explain pods.spec.containers
 ```
 
 ### expose
+
 将 replication controller, service, deployment 或 pod 作为新的 Kubernetes service 开放出去。
 
 指定 deployment、service、replica set、replication controller 或 pod ，并使用该资源的选择器作为指定端口上新服务的选择器。
@@ -781,6 +846,7 @@ kubectl expose (-f FILENAME | TYPE NAME) \
 ```
 
 #### 示例
+
 ```sh
 # 为 RC 的 nginx 创建 service，并通过 Service 的 80 端口转发至容器的 8000 端口上。。
 kubectl expose rc nginx --port=80 --target-port=8000
@@ -790,9 +856,11 @@ kubectl expose -f nginx-controller.yaml --port=80 --target-port=8000
 ```
 
 ### get
+
 获取列出一个或多个资源的信息。
 
 可以使用的资源包括：
+
 - all
 - certificatesigningrequests (aka 'csr')
 - clusterrolebindings
@@ -839,6 +907,7 @@ kubectl get \
 ```
 
 #### 示例
+
 ```sh
 # 列出 Pod 及运行 Pod 节点信息
 kubectl get pods -o wide
@@ -863,7 +932,9 @@ kubectl get all
 ```
 
 ### label
+
 更新（增加、修改或删除）资源上的 label（标签）。
+
 - label 必须以字母或数字开头，可以使用字母、数字、连字符、点和下划线，最长 63 个字符。
 - 如果 `--overwrite` 为 `true`，则可以覆盖已有的 label，否则尝试覆盖 label 将会报错。
 - 如果指定了 `--resource-version`，则更新将使用此资源版本，否则将使用现有的资源版本。
@@ -873,6 +944,7 @@ kubectl label [--overwrite] (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=VAL_
 ```
 
 #### 示例
+
 ```sh
 # 给名为 foo 的 Pod 添加 label unhealthy=true ，且覆盖现有的 value
 kubectl label  --overwrite pods foo unhealthy=true
@@ -886,8 +958,11 @@ kubectl label pods foo status=unhealthy --resource-version=1
 # 删除名为 bar 的 label （使用 "-" 减号相连）
 kubectl label pods foo bar-
 ```
+
 ### logs
+
 输出 pod 中一个容器的日志。果 pod 只包含一个容器则可以省略容器名。
+
 ```sh
 kubectl logs [-f] [-p] POD [-c CONTAINER]
 
@@ -904,6 +979,7 @@ kubectl logs [-f] [-p] POD [-c CONTAINER]
 ```
 
 #### 示例
+
 ```sh
 # 返回仅包含一个容器的 pod nginx 的日志快照
 $ kubectl logs nginx
@@ -922,6 +998,7 @@ $ kubectl logs --since=1h nginx
 ```
 
 ### patch
+
 使用（patch）补丁修改、更新资源的字段。支持 JSON 和 YAML 格式。
 
 ```sh
@@ -929,6 +1006,7 @@ kubectl patch (-f FILENAME | TYPE NAME) -p PATCH
 ```
 
 #### 示例
+
 ```sh
 # 使用 patch 更新 Node 节点
 kubectl patch node k8s-node-1 -p '{"spec":{"unschedulable":true}}'
@@ -943,11 +1021,15 @@ kubectl patch pod valid-pod --type='json' -p='[{"op": "replace", "path": "/spec/
 ```
 
 ### port-forward
+
 将一个或多个本地端口转发到一个 pod。
+
 ```sh
 kubectl port-forward POD [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N]
 ```
+
 #### 示例
+
 ```sh
 # 将本地的 5000，6000 端口转发到 pod mypod 中的 5000，6000
 kubectl port-forward mypod 5000 6000
@@ -963,6 +1045,7 @@ kubectl port-forward  mypod 0:5000
 ```
 
 ### proxy
+
 为 Kubernetes API server 启动代理服务器。
 
 ```sh
@@ -970,6 +1053,7 @@ kubectl proxy [--port=PORT] [--www=static-dir] [--www-prefix=prefix] [--api-pref
 ```
 
 #### 示例
+
 ```sh
 # 在8011端口上运行到 kubernetes apiserver 的代理, 代理 ./local/www/ 目录下的静态文件
 kubectl proxy --port=8011 --www=./local/www/
@@ -998,6 +1082,7 @@ kubectl replace -f FILENAME
 ```
 
 #### 示例
+
 ```sh
 # 使用 pod.json 中的数据替换 pod
 kubectl replace -f ./pod.json
@@ -1013,6 +1098,7 @@ kubectl replace --force -f ./pod.json
 ```
 
 ### rolling-update
+
 执行指定 ReplicationController 的滚动更新。
 
 该命令创建了一个新的 RC， 然后一次更新一个 pod 方式逐步使用新的 `PodTemplate`，最终实现 Pod 滚动更新，`new-controller.json` 需要
@@ -1023,6 +1109,7 @@ kubectl rolling-update OLD_CONTROLLER_NAME ([NEW_CONTROLLER_NAME] --image=NEW_CO
 ```
 
 #### 示例
+
 ```sh
 # 使用 frontend-v2.json 中的新 RC 数据更新 frontend-v1 的 pod
 kubectl rolling-update frontend-v1 -f frontend-v2.json
@@ -1038,9 +1125,11 @@ kubectl rolling-update frontend-v1 frontend-v2 --rollback
 ```
 
 ### rollout
+
 对资源进行管理
 
 可用资源包括：
+
 - deployments
 - daemonsets
 
@@ -1049,6 +1138,7 @@ kubectl rollout SUBCOMMAND
 ```
 
 #### kubectl rollout history
+
 查看之前推出的版本（历史版本）。
 
 ```sh
@@ -1056,6 +1146,7 @@ kubectl rollout history (TYPE NAME | TYPE/NAME) [flags]
 ```
 
 ##### 示例
+
 ```sh
 # 查看 deployment 的历史记录
 kubectl rollout history deployment/abc
@@ -1065,6 +1156,7 @@ kubectl rollout history daemonset/abc --revision=3
 ```
 
 #### kubectl rollout pause
+
 将提供的资源标记为暂停。
 
 被 `pause` 命令暂停的资源不会被控制器协调使用，可以是 `kubectl rollout resume` 命令恢复已暂停资源。
@@ -1076,13 +1168,14 @@ kubectl rollout pause RESOURCE
 ```
 
 ##### 示例
+
 ```sh
 # 将 deployment 标记为暂停。只要 deployment 在暂停中，使用 deployment 更新将不会生效
 kubectl rollout pause deployment/nginx
 ```
 
-
 #### kubectl rollout resume
+
 恢复已暂停的资源
 
 被 `pause` 命令暂停的资源将不会被控制器协调使用。可以通过 `resume` 来恢复资源。目前仅支持恢复 deployment 资源。
@@ -1092,12 +1185,14 @@ kubectl rollout resume RESOURCE
 ```
 
 ##### 示例
+
 ```sh
 # 恢复已暂停的 deployment
 kubectl rollout resume deployment/nginx
 ```
 
 #### kubectl rollout status
+
 查看资源的状态。
 
 使用 `--watch=false` 来查看当前状态，需要查看特定修订版本状态，使用 `--revision=N` 来指定。
@@ -1107,12 +1202,14 @@ kubectl rollout status (TYPE NAME | TYPE/NAME) [flags]
 ```
 
 ##### 示例
+
 ```sh
 # 查看 deployment 的状态
 kubectl rollout status deployment/nginx
 ```
 
 #### kubectl rollout undo
+
 回滚到之前的版本。
 
 ```sh
@@ -1120,6 +1217,7 @@ kubectl rollout undo (TYPE NAME | TYPE/NAME) [flags]
 ```
 
 ##### 示例
+
 ```sh
 # 回滚到之前的 deployment 版本
 kubectl rollout undo deployment/abc
@@ -1133,6 +1231,7 @@ kubectl rollout undo daemonset/abc --to-revision=3
 ### run
 
 创建并运行一个指定的可复制的镜像。创建一个 deployment 或者 job 来管理创建的容器。
+
 ```sh
 kubectl run NAME --image=image \
 [--env="key=value"] \
@@ -1160,6 +1259,7 @@ kubectl run NAME --image=image \
 ```
 
 #### 示例
+
 ```sh
 # 启动一个 Nginx 实例。
 kubectl run nginx --image=nginx
@@ -1197,11 +1297,13 @@ kubectl run pi --image=perl --restart=OnFailure -- perl -Mbignum=bpi -wle 'print
 扩容或缩容 Deployment、ReplicaSet、Replication Controller 或 Job 中 Pod 数量。
 
 `scale` 也可以指定多个前提条件，如：当前副本数量或 `--resource-version`，进行伸缩比例设置前，系统会先验证前提条件是否成立。
+
 ```sh
 kubectl scale [--resource-version=version] [--current-replicas=count] --replicas=COUNT (-f FILENAME | TYPE NAME)
 ```
 
 #### 示例
+
 ```sh
 # 将名为 foo 的 pod 副本数设置为 3
 kubectl scale --replicas=3 rs/foo
@@ -1217,14 +1319,17 @@ kubectl scale --replicas=5 rc/foo rc/bar rc/baz
 ```
 
 ### uncordon
+
 将节点标记为可调度。
+
 ```sh
 kubectl uncordon NODE
 ```
 
-
 ### version
+
 输出服务端和客户端的版本信息。
+
 ```sh
 kubectl version
 

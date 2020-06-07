@@ -2,24 +2,26 @@
 title: kube-dns
 ---
 
-# kube-dns
 DNS 是 Kubernetes 的核心功能之一，通过 `kube-dns` 或 `CoreDNS` 作为集群的必备扩展来提供命名服务。
 
 ## CoreDNS
+
 从 v1.11 开始可以使用 [CoreDNS](https://coredns.io/) 来提供命名服务，并从 v1.13 开始成为默认 DNS 服务。CoreDNS 的特点是效率更高，资源占用率更小，
 推荐使用 CoreDNS 替代 kube-dns 为集群提供 DNS 服务。
 
 从 kube-dns 升级为 CoreDNS：
+
 ```sh
-$ git clone https://github.com/coredns/deployment
-$ cd deployment/kubernetes
-$ ./deploy.sh | kubectl apply -f -
-$ kubectl delete --namespace=kube-system deployment kube-dns
+git clone https://github.com/coredns/deployment
+cd deployment/kubernetes
+./deploy.sh | kubectl apply -f -
+kubectl delete --namespace=kube-system deployment kube-dns
 ```
 
 全新部署的话，查看 [CoreDNS 扩展的配置方法](https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns)。
 
 ## DNS 格式
+
 - Service
   - A record：生成 `my-svc.my-namespace.svc.cluster.local`，解析 IP 分为两种情况
     - 普通 Service 解析为 Cluster IP
@@ -47,8 +49,8 @@ spec:
     name: busybox
 ```
 
-
 ## 配置私有 DNS 服务器和上游 DNS 服务器
+
 ```yml
 apiVersion: v1
 kind: ConfigMap
@@ -67,6 +69,7 @@ data:
 到上游 DNS `["8.8.8.8", "8.8.4.4"]` 里。
 
 ## 示例
+
 ```yml
 ---
 #create cdf view service account

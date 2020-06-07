@@ -2,10 +2,10 @@
 title: kube-scheduler
 ---
 
-# kube-scheduler
 `kube-scheduler` 负责分配**调度 Pod 到集群内的节点上**，它监听 `kube-apiserver`，查询还未分配 Node 的 Pod，然后根据调度策略为这些 Pod 分配节点（更新 Pod 的 `NodeName` 字段）。
 
 影响调度的因素：
+
 - 公平调度
 - 资源高效利用
 - QoS
@@ -15,18 +15,23 @@ title: kube-scheduler
 - deadlines
 
 ## 调度到指定 Node 节点
+
 有三种方式调度 Pod 到指定的 Node 节点上：
+
 - **nodeSelector**：只调度到匹配指定 label 的 Node 上
 - **nodeAffinity**：功能更丰富的 Node 选择器，比如支持集合操作
 - **podAffinity**：调度到满足条件的 Pod 所在的 Node 上
 
 ### nodeSelector
+
 首先给 Node 打上标签
+
 ```sh
 kubectl label nodes node-01 disktype=ssd
 ```
 
 然后在 `daemonset` 或者 `deployment` 中指定 `nodeSelector` 为 `disktype=ssd`：
+
 ```yml
 spec:
   nodeSelector:
@@ -34,6 +39,7 @@ spec:
 ```
 
 ### nodeAffinity
+
 `nodeAffinity` 目前支持两种：`requiredDuringSchedulingIgnoredDuringExecution` 和 `preferredDuringSchedulingIgnoredDuringExecution`，
 分别代表**必须满足条件**和**优选条件**。
 
@@ -71,9 +77,10 @@ spec:
 上面的例子表示调度到包含标签 `kubernetes.io/e2e-az-name` 并且值为 `e2e-az1` 或 `e2e-az2` 的 Node 上，
 并且优选还带有标签 `another-node-label-key=another-node-label-value` 的 Node。
 
-
 ### podAffinity
+
 `podAffinity` 根据已在节点上运行的 pod 上的标签来限制 pod 可以调度到哪些节点，而不是基于节点上的标签。支持：
+
 - `podAffinity`：用于调度 pod 可以和哪些 pod 部署在同一 Zone 中。
 - `podAntiAffinity`：用于规定 pod 不可以和哪些 pod 部署在同一 Zone 中。
 
@@ -113,15 +120,18 @@ spec:
 如果 node 所在的 zone 中包含了一个或多个带有标签 `security=S2` 的 pod，那么不能到该 node 节点。
 
 ## Taints 和 tolerations
+
 参考[Taints 和 tolerations](../cluster/taint.html)
 
 ## 优先级调度
+
 `v1.8` 开始，`kube-scheduler` 支持定义 Pod 的优先级，从而保证高优先级的 Pod 优先调度。并从 `v1.11` 开始默认开启。
 
 > 在 `v1.8-v1.10` 版本中的开启方法 apiserver 配置 `--feature-gates=PodPriority=true` 和 `--runtime-config=scheduling.k8s.io/v1alpha1=true`。
 `kube-scheduler` 配置 `--feature-gates=PodPriority=true`
 
 在指定 Pod 的优先级之前需要先定义一个 `PriorityClass`（非 namespace 资源）：
+
 ```yml
 apiVersion: v1
 kind: PriorityClass
@@ -141,6 +151,7 @@ description: "This priority class should be used for XYZ service pods only."
 > 如果删除一个 `PriorityClass`，那些使用了该 `PriorityClass` 的 Pod 将会保持不变，但是，该 `PriorityClass` 的名称不能在新创建的 Pod 里面使用。
 
 在 `PodSpec` 中通过 `PriorityClassName` 设置 Pod 的优先级：
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -157,6 +168,7 @@ spec:
 ```
 
 ## 示例
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -208,9 +220,12 @@ spec:
 ```
 
 ## 工作原理
+
 `kube-scheduler` 调度分为两个阶段，`predicate` 和 `priority`
+
 - predicate：过滤不符合条件的节点
 - priority：优先级排序，选择优先级最高的节点
 
 ### Pod 启动流程
+
 <img src="../imgs/pod-start.png" width="70%">

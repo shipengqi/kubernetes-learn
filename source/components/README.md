@@ -2,8 +2,6 @@
 title: Kubernetes 核心组件
 ---
 
-# Kubernetes 核心组件
-
 Kubernetes 主要由以下几个核心组件组成：
 
 - `etcd` 保存了整个集群的状态；
@@ -13,7 +11,6 @@ Kubernetes 主要由以下几个核心组件组成：
 - `kubelet` 负责维护容器的生命周期，同时也负责 Volume（CVI）和网络（CNI）的管理；
 - Container runtime 负责镜像管理以及 Pod 和容器的真正运行（CRI）；
 - `kube-proxy` 负责为 Service 提供 cluster 内部的服务发现和负载均衡
-
 
 除了核心组件，还有一些推荐的 Add-ons：
 
@@ -25,7 +22,9 @@ Kubernetes 主要由以下几个核心组件组成：
 - Fluentd-elasticsearch 提供集群日志采集、存储与查询
 
 ## 组件通信
+
 多组件之间的通信原理为：
+
 - `apiserver` 负责操作 `etcd`，且只有 `apiserver` 才直接操作 `etcd` 集群
 - `apiserver` 对内（集群中的其他组件）和对外（用户）提供统一的 REST API，其他组件均通过 `apiserver` 进行通信
   - controller manager、`scheduler`、`kube-proxy` 和 `kubelet` 等均通过 apiserver watch API 监测资源变化情况，并对资源作相应的操作
@@ -38,4 +37,5 @@ Kubernetes 主要由以下几个核心组件组成：
 ![create-pod-workflow](../imgs/create-pod-workflow.png)
 
 ## 端口号
+
 ![components-ports](../imgs/components-ports.png)

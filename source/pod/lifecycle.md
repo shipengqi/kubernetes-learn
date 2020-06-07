@@ -1,7 +1,6 @@
 ---
 title: Pod 生命周期
 ---
-# Pod 生命周期
 
 Pod 的 `status` 字段是一个 `PodStatus` 对象，`PodStatus` 中有一个 `phase` 字段。`phase` 可能的状态：
 
@@ -27,10 +26,12 @@ Pod 的 `status` 字段是一个 `PodStatus` 对象，`PodStatus` 中有一个 `
 - 未知：诊断失败，因此不会采取任何行动。
 
 Kubernetes 提供了两种探针（Probe）来探测容器的状态：
+
 - `livenessProbe`：探测应用是否处于健康状态，如果不健康则删除并重新创建容器。如果容器不提供存活探针，则默认状态为 `Success`。
 - `readinessProbe`：探测应用是否启动完成并且处于正常服务状态，如果不正常则不会接收来自 Kubernetes Service 的流量。如果容器不提供就绪探针，则默认状态为 `Success`。
 
 ### 示例
+
 ```yml
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -78,6 +79,7 @@ spec:
 ```
 
 上面的例子中：
+
 - `initialDelaySeconds` 指定 kubelet 在该执行第一次探测之前需要等待 45 秒钟。也就是容器启动后第一次执行探测是需要等待多少秒。
 - `periodSeconds` 指定 kubelet 需要每隔 5 秒执行一次 probe。也就是执行探测的频率。默认是10秒，最小1秒。
 - `timeoutSeconds` 探测超时时间。默认1秒，最小1秒。
@@ -85,6 +87,7 @@ spec:
 - `failureThreshold` 探测成功后，最少连续探测失败多少次才被认定为失败。默认是3。最小值是1。
 
 `httpGet` 的其他配置项：
+
 - `host`：连接的主机名，默认连接到 pod 的 IP。你可能想在 http header 中设置 "Host" 而不是使用 IP。
 - `scheme`：连接使用的 schema，默认 `HTTP`。
 - `path`: 访问的 HTTP server 的 `path`。
@@ -92,12 +95,15 @@ spec:
 - `port`：访问的容器的端口名字或者端口号。端口号必须介于 1 和 65535 之间。
 
 ## Hook
+
 容器生命周期钩子（Container Lifecycle Hooks）监听容器生命周期的特定事件，并在事件发生时执行已注册的回调函数。支持两种钩子：
+
 - `postStart`：**容器创建后立即执行**，注意由于是异步执行，它无法保证一定在 `ENTRYPOINT` 之前运行。如果失败，容器会被杀死，并根据 `RestartPolicy` 决定是否重启。
 在 `postStart` 操作执行完成之前，kubelet 会锁住容器，不让应用程序的进程启动，只有在 `postStart` 操作完成之后容器的状态才会被设置成为 `RUNNING`。
 - `preStop`：**容器终止前执行**，常用于资源清理。如果失败，容器同样也会被杀死。
 
 钩子的回调函数支持两种方式：
+
 - `exec`：在容器内执行命令，如果命令的退出状态码是 0 表示执行成功，否则表示失败
 - `httpGet`：向指定 URL 发起 GET 请求，如果返回的 HTTP 状态码在 [200, 400] 之间表示请求成功，否则表示失败
 
@@ -121,4 +127,5 @@ spec:
 ```
 
 ### 调试 Hook
+
 Hook 调用的日志没有暴露个给 Pod 的 event，所以只能通过 `describe` 命令来获取，如果有错误将可以看到 `FailedPostStartHook` 或 `FailedPreStopHook` 这样的 event。

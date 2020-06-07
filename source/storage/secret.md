@@ -2,21 +2,22 @@
 title: Secret
 ---
 
-# Secret
 
 我们知道 [ConfigMap](./configmap.html) 是 `Kubernetes` 中的一种用来**存储配置**的资源对象。
 但是对于密码、token、密钥等敏感信息，尽量不要使用 `ConfigMap`，使用 `Kubernetes` 中的 `Secret` 来存储，降低暴露的风险。
 
 <!-- more -->
 
-
 ## Secret 三种类型
+
 - `Opaque`：`base64` 编码格式的 `Secret`，存储密码、密钥等敏感信息。
 - `kubernetes.io/dockerconfigjson`：存储私有 `docker registry` 的认证信息。
 - `ServiceAccount`：用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会**自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录**。
 
 ## Opaque Secret
+
 `Opaque` 类型的数据是一个 `map` 类型，`value` 必须是 `base64` 编码格式：
+
 ```bash
 $ echo -n "admin" | base64
 YWRtaW4=
@@ -25,6 +26,7 @@ QWRtaW5AMTEx
 ```
 
 `test-secret.yml` ：
+
 ```yml
 apiVersion: v1
 kind: Secret
@@ -37,13 +39,17 @@ data:
 ```
 
 ### 使用`yml`文件创建
+
 创建`Secret`：
+
 ```bash
 kubectl create -f test-secret.yml
 ```
 
 ### 使用 `create secret generic` 命令创建
+
 根据配置文件、目录或指定的 `key/value` 创建 `secret`。
+
 ```bash
 kubectl create secret generic NAME [--type=string] [--from-file=[key=]source] [--from-literal=key1=value1] [--dry-run]
 ```
@@ -51,6 +57,7 @@ kubectl create secret generic NAME [--type=string] [--from-file=[key=]source] [-
 用法与 [`create configmap`](./configmap.html) 类似。
 
 创建 `secret`：
+
 ```bash
 # 创建保存 username 和 password 的文件
 echo -n "admin" > ./username.txt
@@ -60,7 +67,9 @@ echo -n "Admin@111" > ./password.txt
 kubectl create secret generic my-secret --from-file=./username.txt --from-file=./password.txt
 secret "my-secret" created
 ```
+
 查看 `secret`：
+
 ```bash
 kubectl get secrets
 NAME                  TYPE                                  DATA      AGE
@@ -79,10 +88,13 @@ Data
 password.txt:    12 bytes
 username.txt:    5 bytes
 ```
+
 **不论使用 `get` 还是 `describe` 命令默认都是不会显示文件的内容**。为了防止将 `secret` 中的内容在终端日志记录中被暴露。
 
 ### Opaque Secret 使用
+
 #### Secret 挂载到 Volume 中
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -109,6 +121,7 @@ spec:
 ```
 
 进入 `Pod`，查看挂载的信息：
+
 ```bash
 # ls /etc/secrets
 password  username
@@ -119,6 +132,7 @@ Admin@111
 ```
 
 #### Secret 设置环境变量
+
 ```yml
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -153,6 +167,7 @@ spec:
 ```
 
 #### 挂载指定 `key` 到指定路径
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -193,6 +208,7 @@ spec:
 结果是，当 `secret` 被更新的时刻到将新的 `secret` 映射到 `pod` 的时刻的总延迟可以与 `kubelet` 中的 `secret` 缓存的 `kubelet sync period + ttl` 一样长。
 
 ## `kubernetes.io/dockerconfigjson`
+
 用 `create secret docker-registry` 命令创建用于 `docker registry` 认证的 `secret`：
 
 ```bash
@@ -204,6 +220,7 @@ kubectl create secret docker-registry myregistrykey \
 ```
 
 创建 `Pod` 的时候，通过 `imagePullSecrets` 引用刚创建的 `myregistrykey`:
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -218,6 +235,7 @@ spec:
 ```
 
 查看 `secret`：
+
 ```bash
 kubectl get secret myregistrykey  -o yaml
 
@@ -235,7 +253,9 @@ metadata:
   uid: 78f6a423-78b9-11e7-a70a-525400bc11f0
 type: kubernetes.io/dockercfg
 ```
+
 解码：
+
 ```bash
 echo "eyJjY3IuY2NzLnRlbmNlbnR5dW4uY29tL3RlbmNlbnR5dW4iOnsidXNlcm5hbWUiOiIzMzIxMzM3OTk0IiwicGFzc3dvcmQiOiIxMjM0NTYuY29tIiwiZW1haWwiOiIzMzIxMzM3OTk0QHFxLmNvbSIsImF1dGgiOiJNek15TVRNek56azVORG94TWpNME5UWXVZMjl0XXXX" | base64 --decode
 
@@ -243,4 +263,5 @@ echo "eyJjY3IuY2NzLnRlbmNlbnR5dW4uY29tL3RlbmNlbnR5dW4iOnsidXNlcm5hbWUiOiIzMzIxMz
 ```
 
 ## `kubernetes.io/service-account-token`
+
 `ServiceAccount` 用来访问 `Kubernetes API`，由 `Kubernetes` 自动创建，并且会自动挂载到 `Pod` 的 `/run/secrets/kubernetes.io/serviceaccount` 目录中。

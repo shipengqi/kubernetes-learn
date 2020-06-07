@@ -2,7 +2,6 @@
 title: kube-proxy
 ---
 
-# kube-proxy
 每台机器上都运行一个 `kube-proxy` 服务，它监听 API server 中 `service` 和 `endpoint` 的变化情况，并通过 `iptables` 等来为服务配置负载均衡（仅支持 TCP 和 UDP）。
 
 `kube-proxy` 可以直接运行在物理机上，也可以以 static pod 或者 `daemonset` 的方式运行。
@@ -11,6 +10,7 @@ k8s 的 Service 资源对象的实现就是依赖 `kube-proxy`。`kube-proxy` �
 本地 Node 上创建一个 SocketServer 负责接受请求，然后均匀的转发到 Pod 的端口上。
 
 `kube-proxy` 的几种实现：
+
 - `userspace`：最早的负载均衡方案，它在用户空间监听一个端口，所有服务通过 iptables 转发到这个端口，然后在其内部负载均衡到实际的 Pod。该方式最主要的问题是效率低，有明显的性能瓶颈。
 - `iptables`：目前推荐的方案，完全以 iptables 规则的方式来实现 service 负载均衡。该方式最主要的问题是在服务多的时候产生太多的 iptables 规则，非增量式更新会引入一定的时延，
 大规模情况下有明显的性能问题
@@ -40,9 +40,10 @@ Service 的 ClusterIP 和 NodePort 是 `kube-proxy` 通过 iptables 的 NAT 转�
 `kube-proxy` 通过监听 API server 中 Service 与 Endpoints 变化，为每个 Service 创建 服务代理对象，并自动同步。
 `kube-proxy` 内部还实现了一个 LoadBanlancer，LoadBanlancer 上保存了 Service 对应到后端的 Enpoints 列表的动态转发路由表。
 
-
 ## kube-proxy systemd 文件示例
+
 下面的示例是以 system service 的方式运行在物理机上。
+
 ```
 [Unit]
 Description=Kubernetes Kube Proxy service
@@ -65,6 +66,7 @@ WantedBy=multi-user.target
 ```
 
 `native.kubeconfig` 如下：
+
 ```
 apiVersion: v1
 kind: Config

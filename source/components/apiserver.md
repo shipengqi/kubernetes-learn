@@ -2,8 +2,8 @@
 title: kube-apiserver
 ---
 
-# kube-apiserver
 `kube-apiserver` 是 Kubernetes 最重要的核心组件之一，主要提供以下的功能：
+
 - 提供集群管理的 REST API 接口，包括认证授权、数据校验以及集群状态变更等
 - 提供其他模块之间的数据交互和通信的枢纽（其他模块通过 API Server 查询或修改数据，如  GET LIST WATCH 等 REST 接口，**只有 API Server 才直接操作 `etcd`**）
 
@@ -11,23 +11,27 @@ title: kube-apiserver
 
 kube-apiserver 支持同时提供 https（默认监听在 6443 端口）和 http API（默认监听在 `127.0.0.1` 的 8080 端口）， http 不建议生产环境启用。
 
-[Kubernetes API Reference ](https://kubernetes.io/docs/reference/#api-reference)。
+[Kubernetes API Reference](https://kubernetes.io/docs/reference/#api-reference)。
 
 通常通过 [kubectl](./kubectl.html) 来访问 apiserver，也可以通过 Kubernetes 各个语言的 [client 库](https://github.com/kubernetes/client-go)来访问 apiserver。
 
 在使用 kubectl 时，打开调试日志也可以看到每个 API 调用的格式，比如：
+
 ```sh
-$ kubectl --v=8 get pods -n kube-system
+kubectl --v=8 get pods -n kube-system
 ```
 
 ## OpenAPI 和 Swagger
+
 通过 `/swaggerapi` 可以查看 Swagger API，`/openapi/v2` 查看 OpenAPI。
 开启 `--enable-swagger-ui=true` 后还可以通过 `/swagger-ui` 访问 Swagger UI。
 
 ## 访问控制
+
 Kubernetes API 的每个请求都会经过多阶段的访问控制之后才会被接受，这包括认证、授权以及准入控制（Admission Control）等。
 
 ## 示例
+
 ```yml
 apiVersion: v1
 kind: Pod
@@ -112,4 +116,5 @@ spec:
 ```
 
 ## 工作原理
+
 <img src="../imgs/kube-apiserver.png" width="70%">

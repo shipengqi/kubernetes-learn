@@ -1,17 +1,19 @@
 ---
 title: 使用文档主题
 ---
-# 使用文档主题
 
 本文档使用 [Hexo Doc Theme](https://zalando-incubator.github.io/hexo-theme-doc/index.html) 搭建。
 
 ## Quick Start
+
 1. 获取源码
+
 ```sh
-$ git clone git@github.com:zalando-incubator/hexo-theme-doc-seed.git
+git clone git@github.com:zalando-incubator/hexo-theme-doc-seed.git
 ```
 
 2. `hexo-theme-doc-seed` 的以下文件拷贝到项目 root 目录下，例如 `kubernetes-learn`：
+
 - `source` 目录
   - `_data` 目录
   - `images` 目录
@@ -20,11 +22,13 @@ $ git clone git@github.com:zalando-incubator/hexo-theme-doc-seed.git
 - `.zappr.yaml`
 
 3. 安装依赖
+
 ```sh
-$ yarn
+yarn
 ```
 
 4. 修改 `package.json`，直接运行 `hexo server` 或者 `hexo s` 可能会找不到命令。
+
 ```js
   "scripts": {
     "start": "hexo s -p 8082"
@@ -32,6 +36,7 @@ $ yarn
 ```
 
 5. 修改 `_config.yml`
+
 ```yml
 theme: ../node_modules/hexo-theme-doc
 
@@ -47,12 +52,14 @@ deploy:
   branch: gh-pages
 ```
 
-6. 启动开发服务，访问 http://localhost:8082 。
+6. 启动开发服务，访问 <http://localhost:8082> 。
+
 ```sh
-$ yarn start
+yarn start
 ```
 
 ## 添加文档
+
 `source` 目录下创建 `markdown` 文件，例如：
 
 ```md
@@ -64,9 +71,11 @@ title: Lorem Ipsum
 
 Lorem ipsum
 ```
+
 也可以创建文档子目录，例如 `source/usage`。
 
 ## Sidebar
+
 `source` 目录下的 `_data` 目录下的 `navigation.yaml` 设置 `sidebar` 和其他的一些配置。
 
 ```yml
@@ -94,13 +103,16 @@ main:
 每个导航项，也可以定义一个 `children`，这个属性可以嵌套导航项。
 
 ### type
+
 `type` 有两种类型：
+
 - **label**: 导航项的标签
 - **link**: 导航项下级文档 link
 
 **`link` 类型的导航项的 `path` 的值是文件的路径，但注意扩展名为`.html`**。
 
 ## Favicon
+
 ```yml
 theme_config:
   favicon: images/favicon.ico

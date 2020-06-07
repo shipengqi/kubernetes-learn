@@ -2,7 +2,6 @@
 title: ETCD
 ---
 
-# ETCD
 
 Etcd 是 CoreOS 基于 Raft 开发的分布式 `key-value` 存储，可用于服务发现、共享配置以及一致性保障（如数据库选主、分布式锁等）。
 
@@ -17,13 +16,16 @@ Etcd 是 Kubernetes 集群中的一个十分重要的组件，用于保存集群
 该变量默认值为 2。
 
 ## 原理
+
 [理解 Raft 一致性算法 动画演示](http://thesecretlivesofdata.com/raft/)
 [Raft 一致性算法论文的中文翻译](https://github.com/maemual/raft-zh_cn)
 
 ## Etcd 存储 Flannel 网络信息
+
 我们在安装 Flannel 的时候配置了 `ETCD_PREFIX="/coreos.com/network"`参数，这是 Flannel 查询 etcd 的目录地址。
 
 查看 Etcd 中存储的 flannel 网络信息：
+
 ```sh
 $ etcdctl --ca-file=/etc/kubernetes/ssl/ca.pem \
 --cert-file=/etc/kubernetes/ssl/kubernetes.pem \
@@ -36,7 +38,9 @@ ls /coreos.com/network -r
 /coreos.com/network/subnets/172.30.20.0-24
 /coreos.com/network/subnets/172.30.23.0-24
 ```
+
 查看 flannel 的配置：
+
 ```sh
 $ etcdctl --ca-file=/etc/kubernetes/ssl/ca.pem \
 --cert-file=/etc/kubernetes/ssl/kubernetes.pem \
@@ -47,7 +51,9 @@ get /coreos.com/network/config
 ```
 
 ## Etcd 存储 Kubernetes 对象信息
+
 Kubernetes 所有的资源对象都保存在 `/registry` 路径下：
+
 ```
 ThirdPartyResourceData
 apiextensions.k8s.io
@@ -83,15 +89,19 @@ statefulsets
 storageclasses
 thirdpartyresources
 ```
+
 如果还创建了 CRD（自定义资源定义），则在此会出现 CRD 的 API。
 
 ### 查看集群中所有的 Pod 信息
+
 直接从 etcd 中查看 kubernetes 集群中所有的 pod 的信息，可以使用下面的命令：
+
 ```sh
 ETCDCTL_API=3 etcdctl get /registry/pods --prefix -w json|python -m json.tool
 ```
 
 ## 示例
+
 ```yml
 apiVersion: v1
 kind: Pod

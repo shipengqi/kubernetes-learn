@@ -2,7 +2,6 @@
 title: Federation
 ---
 
-# Federation
 在云计算环境中，服务的作用距离范围从近到远一般可以有：同主机（Host，Node）、跨主机同可用区（Available Zone）、跨可用区同地区（Region）、跨地区同服
 务商（Cloud Service Provider）、跨云平台。K8s 的设计定位是单一集群在同一个地域内，因为同一个地区的网络性能才能满足 K8s 的调度和计算存储连接要求。
 而[集群联邦](https://github.com/kubernetes-retired/federation)（Federation）就是为提供跨 Region 跨服务商 K8s 集群服务而设计的。
@@ -18,6 +17,7 @@ title: Federation
 <img src="../imgs/federation-api.png" width="70%">
 
 Federation 主要包括三个组件：
+
 - `federation-apiserver`：类似 `kube-apiserver`，但提供的是跨集群的 REST API
 - `federation-controller-manager`：类似 `kube-controller-manager`，但提供多集群状态的同步机制
 - `kubefed`：Federation 管理命令行工具

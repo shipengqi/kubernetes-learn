@@ -2,12 +2,13 @@
 title: kubelet
 ---
 
-# kubelet
 每个节点上都运行一个 `kubelet` 服务进程，默认监听 `10250` 端口，接收并执行 master 发来的指令，管理 Pod 及 Pod 中的容器。每个 `kubelet` 进程会在 API Server 上注册节点
 自身信息，定期向 master 节点汇报节点的资源使用情况，并通过 cAdvisor 监控节点和容器的资源。
 
 ## 节点管理
+
 节点管理主要是节点自注册和节点状态更新：
+
 - Kubelet 可以通过设置启动参数 `--register-node` 来确定是否向 API Server 注册自己；如果 Kubelet 没有选择自注册模式，则需要用户自己配置 Node 资源信息，
 同时需要告知 Kubelet 集群上的 API Server 的位置（`--api-servers` 参数）；
 - Kubelet 在启动时通过 API Server 注册节点信息，并定时向 API Server 发送节点新消息，API Server 在接收到新消息后，将信息写入 etcd。
@@ -18,6 +19,7 @@ kubelet 以 `PodSpec` 为单位来运行任务，`PodSpec` 是一个描述 pod �
 确保这些 `PodSpecs` 中描述的容器健康运行。不是 Kubernetes 创建的容器将不在 kubelet 的管理范围。
 
 除了来自 apiserver 的 `PodSpec` 之外，还有三种方法可以将容器清单提供给 Kubelet：
+
 - 文件：启动参数 `--pod-manifest-path` 设置的文件路径。kubelet 将定期监听该路径下的文件以获得更新。监视周期默认为 20 秒，可通过参数进行配置。
 默认 `/etc/kubernetes/manifests/`。
 - HTTP endpoint (URL)：启动参数 `--manifest-url` 设置。每 20 秒检查一次该端点（该时间间隔也是可以通过命令行配置的）。
@@ -29,10 +31,12 @@ kubelet 以 `PodSpec` 为单位来运行任务，`PodSpec` 是一个描述 pod �
 ### 通过 API Server 获取 Pod 清单及创建 Pod 的过程
 
 ### Static Pod
+
 以非 API Server 方式创建的 Pod 都叫 Static Pod。Kubelet 将 Static Pod 的状态汇报给 API Server，API Server 为该 Static Pod 创建一个 Mirror Pod 和
 其相匹配。Mirror Pod 的状态将真实反映 Static Pod 的状态。当 Static Pod 被删除时，与之相对应的 Mirror Pod 也会被删除。
 
 ## 容器健康检查
+
 Pod 通过两类探针检查容器的健康状态，参考 [Pod 探针](../pod/lifecycle.html#探针)。
 
 kubelet 会定时调用健康探针来诊断容器的状态。
@@ -63,8 +67,8 @@ Kubelet 定期（`housekeeping-interval`）检查系统的资源是否达到了�
 | `imagefs.available` | `DiskPressure` | `imagefs.available := node.stats.runtime.imagefs.available`（镜像以及容器可写层等） |
 | `imagefs.inodesFree` | `DiskPressure` | `imagefs.inodesFree := node.stats.runtime.imagefs.inodesFree` |
 
-
 这些驱逐阈值可以使用百分比，也可以使用绝对值，如
+
 ```sh
 --eviction-hard=memory.available<500Mi,nodefs.available<1Gi,imagefs.available<100Gi
 --eviction-minimum-reclaim="memory.available=0Mi,nodefs.available=500Mi,imagefs.available=2Gi"`
@@ -72,11 +76,13 @@ Kubelet 定期（`housekeeping-interval`）检查系统的资源是否达到了�
 ```
 
 这些驱逐信号可以分为软驱逐和硬驱逐：
+
 - 软驱逐（Soft Eviction）：配合驱逐宽限期（`eviction-soft-grace-period` 和 `eviction-max-pod-grace-period` ）一起使用。系统资源达到软驱逐阈值并在超过
 宽限期之后才会执行驱逐动作。
 - 硬驱逐（Hard Eviction）：系统资源达到硬驱逐阈值时立即执行驱逐动作。
 
 驱逐动作包括回收节点资源和驱逐用户 Pod 两种：
+
 - 回收节点资源
   - 配置了 `imagefs` 阈值时
     - 达到 `nodefs` 阈值：删除已停止的 Pod
@@ -92,6 +98,7 @@ Kubelet 定期（`housekeeping-interval`）检查系统的资源是否达到了�
     - 达到 `nodefs` 阈值时，按照总磁盘使用驱逐（local volume + logs + 容器可写层）
 
 ## 容器运行时
+
 容器运行时（Container Runtime）是 Kubernetes 最重要的组件之一，负责真正管理镜像和容器的生命周期。Kubelet 通
 过 [Container Runtime Interface (CRI)](../extension/cri.html) 与容器运行时交互，以管理镜像和容器。
 
@@ -106,6 +113,7 @@ CRI 基于 gRPC 定义了 `RuntimeService` 和 `ImageService` 等两个 gRPC 服
 本地的 Unix Socket （Windows 使用 tcp 格式）。
 
 目前基于 CRI 容器引擎已经比较丰富了，包括：
+
 - Docker: 核心代码依然保留在 kubelet 内部（[pkg/kubelet/dockershim](https://github.com/kubernetes/kubernetes/tree/master/pkg/kubelet/dockershim)），
 是最稳定和特性支持最好的运行时
 - OCI 容器运行时：
@@ -124,6 +132,7 @@ CRI 基于 gRPC 定义了 `RuntimeService` 和 `ImageService` 等两个 gRPC 服
 - [Infranetes](https://github.com/apporbit/infranetes)：直接管理 IaaS 平台虚拟机，如 GCE、AWS 等
 
 ## kubelet systemd 文件示例
+
 ```
 [Unit]
 Description=Kubernetes Kubelet
@@ -168,6 +177,7 @@ WantedBy=multi-user.target
 ```
 
 `native.kubeconfig` 如下：
+
 ```
 apiVersion: v1
 kind: Config
@@ -190,7 +200,9 @@ users:
 ```
 
 ## kubelet 工作原理
+
 Kubelet 由许多内部组件构成：
+
 - Kubelet API，包括 `10250` 端口的认证 API、`4194` 端口的 cAdvisor API、`10255` 端口的只读 API 以及 `10248` 端口的健康检查 API
 - syncLoop：从 API 或者 manifest 目录接收 Pod 更新，发送到 podWorkers 处理，大量使用 channel 处理来处理异步请求
 - 辅助的 manager，如 cAdvisor、PLEG、Volume Manager 等，处理 syncLoop 以外的其他工作
@@ -211,4 +223,5 @@ Kubelet 由许多内部组件构成：
 <img src="../imgs/kubelet_arch.png" width="70%">
 
 ### Pod 启动流程
+
 <img src="../imgs/pod-start.png" width="70%">

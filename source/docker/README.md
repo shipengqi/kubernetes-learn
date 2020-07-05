@@ -3,6 +3,7 @@ title: Docker
 ---
 
 # Docker
+
 我们知道 Docker 是基于 Cgroups 和 Namespace 机制创建一个叫做“沙盒”的隔离环境。这个用来运行应用的隔离环境就是所谓的“容器”。
 
 但是在Docker 之前就已经有成熟的 PaaS 项目，比如 Cloud Foundry。Docker 与 Cloud Foundry 的容器都是基于 Cgroups 和 Namespace ，大部分功能
@@ -18,6 +19,7 @@ PaaS 项目可以帮助用户大规模部署应用到集群，但是它的打包
 精髓。
 
 ## 容器基础
+
 容器其实就是一种沙盒技术。沙盒就像一个集装箱，把你的应用装起来，这样应用和应用之间互不干扰，并且这个集装箱应用可以很方便的搬来搬去。
 
 “容器”，实际上是一个由 Linux Namespace、Linux Cgroups 和 rootfs 三种技术构建出来的进程的隔离环境。
@@ -28,10 +30,13 @@ PaaS 项目可以帮助用户大规模部署应用到集群，但是它的打包
 可以简单的理解 **Namespace 技术** 使进程看不见边界以外的资源，**Cgroups 技术** 使进程摸不到边界以外的资源
 
 ### Namespace
+
 ```bash
 docker run -it busybox /bin/sh
 ```
+
 这里运行了一个容器，并且分配了一个命令行终端来和容器交互。执行 ps 命令，会输出：
+
 ```bash
 PID USER TIME COMMAND
 1   root  0:00  /bin/sh
@@ -52,16 +57,16 @@ PID USER TIME COMMAND
 Namespace 的使用方式也非常有意思：它其实只是 Linux 创建新进程的一个可选参数，在 Linux 系统中创建线程的系统调用是 `clone()`：
 
 ```c
-int pid = clone(main_function, stack_size, SIGCHLD, NULL); 
+int pid = clone(main_function, stack_size, SIGCHLD, NULL);
 ```
 
 用 `clone()` 系统调用创建一个新进程时，就可以在参数中指定 `CLONE_NEWPID` 参数
+
 ```c
-int pid = clone(main_function, stack_size, CLONE_NEWPID | SIGCHLD, NULL); 
+int pid = clone(main_function, stack_size, CLONE_NEWPID | SIGCHLD, NULL);
 ```
 
 新创建的这个进程将会“看到”一个全新的进程空间，在这个进程空间里，它的 PID 是 1。
-
 
 每个 PID Namespace 里的应用进程，都会认为自己是当前容器里的第 1 号进程，它们既看不到宿主机里真正的进程空间，也看不到其他 PID Namespace 里的具体情况。
 
@@ -81,6 +86,7 @@ int pid = clone(main_function, stack_size, CLONE_NEWPID | SIGCHLD, NULL);
 这就意味着，如果你的容器中的程序使用 `settimeofday(2)` 系统调用修改了时间，整个宿主机的时间都会被随之修改，这显然不符合用户的预期。
 
 #### 限制
+
 为什么需要对容器做“限制”呢？
 
 以 PID Namespace 为例，来给你解释这个问题。
@@ -90,11 +96,11 @@ int pid = clone(main_function, stack_size, CLONE_NEWPID | SIGCHLD, NULL);
 **Linux Cgroups 就是 Linux 内核中用来为进程设置资源限制的一个重要功能。**
 Linux Cgroups 的全称是 Linux Control Group。它最主要的作用，就是限制一个进程组能够使用的资源上限，包括 CPU、内存、磁盘、网络带宽等等。
 
-
 一个正在运行的 Docker 容器，其实就是一个启用了多个 Linux Namespace 的应用进程，而这个进程能够使用的资源量，则受 Cgroups 配置的限制。
 
 在 Linux 中，Cgroups 给用户暴露出来的操作接口是文件系统，即它以文件和目录的方式组织在操作系统的 `/sys/fs/cgroup` 路径下。
 使用 mount 指令展示：
+
 ```bash
 $ mount -t cgroup
 cpuset on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
@@ -107,6 +113,7 @@ memory on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,mem
 
 在 `/sys/fs/cgroup` 下面有很多诸如 cpuset、cpu、memory 这样的子目录，也叫子系统。这些都是当前机器可以被 Cgroups 进行限制的资源种类。而在子系统对应的资
 源种类下，你就可以看到该类资源具体可以被限制的方法。比如，对 CPU 子系统来说，我们就可以看到如下几个配置文件：
+
 ```bash
 $ ls /sys/fs/cgroup/cpu
 cgroup.clone_children cpu.cfs_period_us cpu.rt_period_us cpu.shares notify_on_release
@@ -118,14 +125,17 @@ cgroup.procs cpu.cfs_quota_us cpu.rt_runtime_us cpu.stat tasks
 
 这样的配置文件又如何使用？
 你需要在对应的子系统下面创建一个目录，比如，我们现在进入 `/sys/fs/cgroup/cpu` 目录下：
+
 ```bash
 root@ubuntu:/sys/fs/cgroup/cpu$ mkdir container
 root@ubuntu:/sys/fs/cgroup/cpu$ ls container/
 cgroup.clone_children cpu.cfs_period_us cpu.rt_period_us cpu.shares notify_on_release
 cgroup.procs cpu.cfs_quota_us cpu.rt_runtime_us cpu.stat tasks
 ```
+
 **这个目录就称为一个“控制组”。操作系统会在你新创建的 `container` 目录下，自动生成该子系统对应的资源限制文件**。
 现在，我们在后台执行一个死循环，计算机的 CPU 吃到 `100%`：
+
 ```bash
 $ while : ; do : ; done &
 [1] 226
@@ -133,6 +143,7 @@ $ while : ; do : ; done &
 
 我们可以通过查看 `container` 目录下的文件，看到 `container` 控制组里的 CPU quota 还没有任何限制（即：`-1`），CPU period 则是默
 认的 `100 ms`（`100000 us`）：
+
 ```bash
 $ cat /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
 -1
@@ -141,13 +152,15 @@ $ cat /sys/fs/cgroup/cpu/container/cpu.cfs_period_us
 ```
 
 修改这些文件的内容来设置限制，比如，向 container 组里的 cfs_quota 文件写入 20 ms（20000 us）：
+
 ```bash
-$ echo 20000 > /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
+echo 20000 > /sys/fs/cgroup/cpu/container/cpu.cfs_quota_us
 ```
 
 结合前面的介绍，你应该能明白这个操作的含义，它意味着在每 100 ms 的时间里，被该控制组限制的进程只能使用 20 ms 的CPU 时间，也就是说这个进程只能使用到 20% 的CPU 带宽。
 
 接下来，我们把被限制的进程的 PID 写入 `container` 组里的 `tasks` 文件，上面的设置就会对该进程生效了：
+
 ```bash
 $ echo 226 > /sys/fs/cgroup/cpu/container/tasks
 
@@ -155,9 +168,11 @@ $ echo 226 > /sys/fs/cgroup/cpu/container/tasks
 $ top
 %Cpu0 : 20.3 us, 0.0 sy, 0.0 ni, 79.7 id, 0.0 wa, 0.0 hi, 0.0 si, 0.0 st
 ```
+
 可以看到，计算机的 CPU 使用率立刻降到了 `20%`（`%Cpu0 : 20.3 us`）。
 
 Cgroups 的每一项子系统都有其独有的资源限制能力，比如：
+
 - `blkio`，为块设备设定 I/O 限制，一般用于磁盘等设备；
 - `cpuset`，为进程分配单独的 CPU 核和对应的内存节点；
 - `memory`，为进程设定内存使用的限制。
@@ -167,21 +182,24 @@ Linux Cgroups 的设计还是比较易用的，**它其实就是一个子系统�
 而对于 Docker 等 Linux 容器项目来说，**它们只需要在每个子系统下面，为每个容器创建一个控制组（即创建一个新目录），然后在启动容器进程之后，把这个进程的 PID 填写到对应控制组的 tasks 文件中就可以了**。
 
 而至于在这些控制组下面的资源文件里填上什么值，就靠用户执行 `docker run` 时的参数指定了，比如这样一条命令：
+
 ```bash
-$ docker run -it --cpu-period=100000 --cpu-quota=20000 ubuntu /bin/bash
+docker run -it --cpu-period=100000 --cpu-quota=20000 ubuntu /bin/bash
 ```
 
 在启动这个容器后，我们可以通过查看 Cgroups 文件系统下，CPU 子系统中，“docker” 这个控制组里的资源限制文件的内容来确认：
+
 ```bash
 $ cat /sys/fs/cgroup/cpu/docker/5d5c9f67d/cpu.cfs_period_us
 100000
 $ cat /sys/fs/cgroup/cpu/docker/5d5c9f67d/cpu.cfs_quota_us
 20000
 ```
+
 意味着这个 Docker 容器，只能使用到 `20%` 的CPU 带宽。
 
-
 #### Cgroups 的问题
+
 跟 Namespace 的情况类似，Cgroups 对资源的限制能力也有很多不完善的地方，被提及最多的自然是 `/proc` 文件系统的问题。
 
 众所周知，Linux 下的 `/proc` 目录存储的是记录当前内核运行状态的一系列特殊文件，用户可以通过访问这些文件，查看系统以及当前正在运行的进程的信息，比如 CPU 使用情况、内存占用率等，这些文件也是 **top 指令查看系统信息的主要数据来源**。但是，你如果在容器里执行 top 指令，就会发现，它显示的信息居然是宿主机的 CPU 和内存数据，而不是当前容器的数据。
@@ -192,6 +210,7 @@ $ cat /sys/fs/cgroup/cpu/docker/5d5c9f67d/cpu.cfs_quota_us
 `top` 是从 `/prof/stats` 目录下获取数据，所以道理上来讲，容器不挂载宿主机的该目录就可以了。`lxcfs` 就是来实现这个功能的，做法是把宿主机的 `/var/lib/lxcfs/proc/memoinfo` 文件挂载到 Docker 容器的 `/proc/meminfo` 位置后。容器中进程读取相应文件内容时，`LXCFS` 的 `FUSE` 实现会从容器对应的 Cgroup 中读取正确的内存限制。从而使得应用获得正确的资源约束设定。kubernetes 环境下，也能用，以 `ds` 方式运行 `lxcfs`，自动给容器注入正确的 `proc` 信息。
 
 ### 镜像
+
 容器里面的文件系统是什么样子的？
 
 可能你立刻就能想到，这一定是一个关于 Mount Namespace 的问题：容器里的应用进程，理应看到一份完全独立的文件系统。这样，它就可以在自己的容器
@@ -215,6 +234,7 @@ Linux 操作系统里，有一个名为 `chroot` 的命令可以在 shell 中方
 目录到你指定的位置。它的用法也非常简单。
 
 假设，我们现在有一个 `$HOME/test` 目录，想要把它作为一个 `/bin/bash` 进程的根目录。首先，创建一个 `test` 目录和几个 `lib` 文件夹：
+
 ```bash
 $ mkdir -p $HOME/test
 $ mkdir -p $HOME/test/{bin,lib64,lib}
@@ -232,6 +252,7 @@ $ for i in $list; do cp -v "$i" "${T}${i}"; done
 # 执行 chroot 命令，告诉操作系统，我们将使用 $HOME/test 目录作为 /bin/bash 进程的根目录
 $ chroot $HOME/test /bin/bash
 ```
+
 这时，如果执行 "ls /"，就会看到，它返回的都是 `$HOME/test` 目录下面的内容，而不是宿主机的内容，对于被 `chroot` 的进程来说，它并不会感受到自己的根目录
 已经被“修改”成 `$HOME/test` 了。是不是跟我之前介绍的 Linux Namespace 很类似呢？
 
@@ -243,6 +264,7 @@ $ chroot $HOME/test /bin/bash
 **而这个挂载在容器根目录上、用来为容器进程提供隔离后执行环境的文件系统，就是所谓的“容器镜像”。它还有一个更为专业的名字，叫作：rootfs（根文件系统）**。
 
 所以，一个最常见的 `rootfs`，或者说容器镜像，会包括如下所示的一些目录和文件，比如 `/bin`，`/etc`，`/proc` 等等：
+
 ```bash
 $ ls /
 bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
@@ -251,6 +273,7 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 而你进入容器之后执行的 `/bin/bash`，就是 `/bin` 目录下的可执行文件，与宿主机的 `/bin/bash` 完全不同。
 
 现在，你应该可以理解，**对 Docker 项目来说，它最核心的原理实际上就是创建的用户进程**：
+
 1. **启用 Linux Namespace 配置**；
 2. **设置指定的 Cgroups 参数**；
 3. **切换进程的根目录（Change Root）**。
@@ -272,6 +295,7 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 不过，正是由于 rootfs 的存在，容器才有了一个被反复宣传至今的重要特性：一致性。
 
 #### 一致性
+
 由于云端与本地服务器环境不同，应用的打包过程，一直是使用 PaaS 时最“痛苦”的一个步骤。容器镜像（即rootfs）非常优雅地解决了这个问题。
 
 **由于 rootfs 里打包的不只是应用，而是整个操作系统的文件和目录，也就意味着，应用以及它运行所需要的所有依赖，都被封装在了一起。**
@@ -284,12 +308,14 @@ bin dev etc home lib lib64 mnt opt proc root run sbin sys tmp usr var
 **这种深入到操作系统级别的运行环境一致性，打通了应用在本地开发和远端执行环境之间难以逾越的鸿沟。**
 
 #### 联合文件系统（Union File System）
+
 难道我每开发一个应用，或者升级一下现有的应用，都要重复制作一 次rootfs 吗？
 
 **Docker 在镜像的设计中，引入了层（layer）的概念。也就是说，用户制作镜像的每一步操作，都会生成一个层，也就是一个增量 rootfs。**
 
 Union File System 也叫 UnionFS，最主要的功能是将多个不同位置的目录联合挂载（unionmount）到同一个目录下。比如，现在有两个目录 A 和 B，它们分
 别有两个文件：
+
 ```bash
 $ tree
 .
@@ -311,6 +337,7 @@ $ tree ./C
 ├── b
 └── x
 ```
+
 可以看到，在这个合并后的目录 C 里，有 a、b、x 三个文件，并且 x 文件只有一份。这，就是“合并”的含义。此外，如果你在目录 C 里对 a、b、x 文件做修改，这些修
 改也会在对应的目录 A、B 中生效。(aufs 是一层一层往上盖的，所以我给的例子里，A 里面的 x 会覆盖 B 里面的 x)
 
@@ -319,16 +346,21 @@ Docker 项目中，又是如何使用这种 Union File System 的呢？
 AuFS 的全称是 Advance UnionFS，是对 Linux 原生 UnionFS 的重写和改进；
 
 对于 AuFS 来说，它最关键的目录结构在 `/var/lib/docker/aufs` 路径下的 `diff` 目录：
+
 ```bash
 /var/lib/docker/aufs/diff/<layer_id>
 ```
+
 通过一个具体例子来看一下。我们启动一个容器，比如：
+
 ```bash
-$ docker run -d ubuntu:latest sleep 3600
+docker run -d ubuntu:latest sleep 3600
 ```
+
 这时候，Docker 就会从 Docker Hub 上拉取一个 Ubuntu 镜像到本地。
 这个所谓的“镜像”，实际上就是一个 Ubuntu 操作系统的 rootfs，它的内容是 Ubuntu 操作系统的所有文件和目录。不过，与之前我们讲述的 rootfs 稍微不同
 的是，Docker 镜像使用的 rootfs，往往由多个“层”组成：
+
 ```bash
 $ docker image inspect ubuntu:latest
 ...
@@ -348,6 +380,7 @@ $ docker image inspect ubuntu:latest
 这些增量联合挂载在一个统一的挂载点上（等价于前面例子里的 “/C” 目录）。
 
 这个挂载点就是 `/var/lib/docker/aufs/mnt/`，比如：
+
 ```bash
 $ ls /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fcfa2a2f5c89dc21ee30e166be823ceaeba15dce64
 bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var
@@ -356,6 +389,7 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 那么，前面提到的五个镜像层，是如何被联合挂载成这样一个完整的 Ubuntu 文件系统的？
 
 这个信息记录在 AuFS 的系统目录 `/sys/fs/aufs` 下面。首先，通过查看 AuFS 的挂载信息，我们可以找到这个目录对应的 AuFS 的内部 ID（也叫：`si`）：
+
 ```bash
 $ cat /proc/mounts| grep aufs
 none /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fc... aufs rw,relatime,si=972c6d361e6b32ba
@@ -363,6 +397,7 @@ none /var/lib/docker/aufs/mnt/6e3be5d2ecccae7cc0fc... aufs rw,relatime,si=972c6d
 
 即，`si=972c6d361e6b32ba`。
 然后使用这个 ID，你就可以在 `/sys/fs/aufs` 下查看被联合挂载在一起的各个层的信息：
+
 ```bash
 $ cat /sys/fs/aufs/si_972c6d361e6b32ba/br[0-9]*
 /var/lib/docker/aufs/diff/6e3be5d2ecccae7cc...=rw
@@ -385,6 +420,7 @@ $ cat /sys/fs/aufs/si_972c6d361e6b32ba/br[0-9]*
 于什么是 `whiteout`，我下面马上会讲到）。
 
 这时，我们可以分别查看一下这些层的内容：
+
 ```bash
 $ ls /var/lib/docker/aufs/diff/72b0744e06247c7d0...
 etc sbin usr var
@@ -393,6 +429,7 @@ run
 $ ls /var/lib/docker/aufs/diff/a524a729adadedb900...
 bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr var
 ```
+
 这些层，都以增量的方式分别包含了 Ubuntu 操作系统的一部分。
 
 第二部分，**可读写层**。
@@ -428,6 +465,7 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 而由于使用了联合文件系统，你在容器里对镜像rootfs 所做的任何修改，都会被操作系统先复制到这个可读写层，然后再修改。这就是所谓的：`Copy-on-Write`。
 
 ### AUFS
+
 AUFS 是一种联合文件系统，它把若干目录按照顺序和权限 mount 为一个目录并呈现出来
 默认情况下，**只有第一层（第一个目录）是可写的，其余层是只读的**。
 增加文件：默认情况下，**新增的文件都会被放在最上面的可写层中**。
@@ -439,16 +477,21 @@ AUFS 是一种联合文件系统，它把若干目录按照顺序和权限 mount
 性能：AUFS 的 CoW 特性在写入大型文件时第一次会出现延迟
 
 ## `docker exec`原理
+
 docker exec 是怎么做到进入容器里的？
 
 ### 进程的 Namespace 信息
+
 实际上，Linux Namespace 创建的隔离空间虽然看不见摸不着，但**一个进程的 Namespace 信息在宿主机上是确确实实存在的，并且是以一个文件的方式存在**。
 比如，通过如下指令，你可以看到当前正在运行的Docker 容器的进程号（PID）是25686：
+
 ```bash
 $ docker inspect --format '{{ .State.Pid }}' 4ddf4638572d
 25686
 ```
+
 这时，你可以通过查看宿主机的 proc 文件，看到这个 `25686` 进程的所有 Namespace 对应的文件：
+
 ```bash
 $ ls -l /proc/25686/ns
 total 0
@@ -468,6 +511,7 @@ lrwxrwxrwx 1 root root 0 Aug 13 14:05 uts -> uts:[4026532277]
 这也就意味着：**一个进程，可以选择加入到某个进程已有的 Namespace 当中，从而达到“进入”这个进程所在容器的目的，这正是 `docker exec` 的实现原理**。
 
 这个操作所依赖的，乃是一个名叫 `setns()` 的Linux 系统调用。
+
 ```c
 #define _GNU_SOURCE
 #include <fcntl.h>
@@ -480,36 +524,41 @@ lrwxrwxrwx 1 root root 0 Aug 13 14:05 uts -> uts:[4026532277]
 
 int main(int argc, char *argv[]) {
   int fd;
-  // 打开指定的 Namespace 文件 
+  // 打开指定的 Namespace 文件
   fd = open(argv[1], O_RDONLY);
   // 描述符 fd 是 setns 的第一个参数，设置对应的 Namespace
   if (setns(fd, 0) == -1) {
     errExit("setns");
   }
   // 在前面设置的 Namespace 下执行传入的 `/bin/bash` 命令，
-  execvp(argv[2], &argv[2]); 
+  execvp(argv[2], &argv[2]);
   errExit("execvp");
 }
 ```
+
 这段代码功能非常简单：一共接收两个参数，第一个参数是 `argv[1]`，即当前进程要加入的 Namespace 文件的路径，比如 `/proc/25686/ns/net`；而第二个参数，
 `argv[2]` 则是你要在这个 Namespace 里运行的进程，比如 `/bin/bash`。
 
 docker 提供了参数 `-net`，可以让你启动一个容器并“加入”到另一个容器的 Network Namespace 里:
+
 ```bash
 docker run -it --net container:4ddf4638572d busybox ifconfig
 ```
 
 ## volume
+
 容器技术使用了 rootfs 机制和 Mount Namespace，构建出了一个同宿主机完全隔离开的文件系统环境。这时候，我们就需要考虑这样两个问题：
+
 1. 容器里进程新建的文件，怎么才能让宿主机获取到？
 2. 宿主机上的文件和目录，怎么才能让容器里的进程访问到？
 
 **Volume 机制，允许你将宿主机上指定的目录或者文件，挂载到容器里面进行读取和修改操作。**
 
 Docker 项目里，它支持两种 Volume 声明方式，可以把宿主机目录挂载进容器的 `/test` 目录当中：
+
 ```bash
-$ docker run -v /test ...
-$ docker run -v /home:/test ...
+docker run -v /test ...
+docker run -v /home:/test ...
 ```
 
 第一种情况，由于你并没有显示声明宿主机目录，那么 Docker 就会默认在宿主机上创建一个临时目录`/var/lib/docker/volumes/[VOLUME_ID]/_data`，然后把它挂载到容器的 `/test` 目录上。

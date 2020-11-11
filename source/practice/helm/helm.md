@@ -429,6 +429,20 @@ $ helm install deis-workflow ./deis-workflow-0.1.0.tgz
 
 ## Charts
 
+Helm 使用的包格式称为 chart。一个 chart 是一个描述一组相关 Kubernetes 资源的文件集合。一个单独的 chart 可能用于被部署简单的东西，比如 memcached pod，或者一些复杂的东西，比如一个完整的具有 HTTP 服务，数据库，缓存等的 Web 应用。
+
+chart 是以文件的形式创建的，按特定的目录树排列。它们可以被打包到版本化的压缩包，然后进行部署。
+
+如果你想下载并查看一个已经发布的 chart 的文件，但是不安装这个 chart，你可以使用 `helm pull chartrepo/chartname`。
+
+本文档解释了 chart 格式，并且提供使用 Helm 构建 chart 的基本指导。
+
+### Chart 文件结构
+
+chart 被组织为一个目录内的文件集合。目录名称是 chart 的名称（没有版本信息）。那么，一个描述 WordPress 的 chart 会被存储在 `wordpress/` 目录中。
+
+在这个目录中，Helm 期望的目录结构是下面这样的：
+
 ```bash
 wordpress/
   Chart.yaml          # A YAML file containing information about the chart
@@ -491,12 +505,43 @@ annotations:
 
 例如，一个 nginx chart 的版本设置为 `version: 1.2.3`，将被命名为：`nginx-1.2.3.tgz`。
 
+很多复杂的 SemVer2 命名也是支持的，如 `version: 1.2.3-alpha.1+ef365`。但是非 SemVer 命名是明确禁止的。
+
+注意：虽然 Helm Classic 和 Deployment Manager 在 chart 方面都非常适合 GitHub，但 Helm V2 或更高的版本并不依赖或需要 GitHub 甚至 Git。因此，它不使用 Git SHA 进行版本控制。
+
+Helm 中的许多工具会用到 `Chart.yaml` 中的 `version` 字段，包括 CLI。在生成包时，`helm package` 命令将使用 `Chart.yaml` 中的版本名作为包名的 token。系统假定 chart 包名称中的版本号与 `Chart.yaml` 中的版本号相匹配。不符合这个情况会导致错误。
 
 #### apiVersion 字段
 
+对于至少需要 Helm 3 的 chart 来说，`apiVersion` 字段应该是 `v2`。支持以前的 Helm 版本的 chart `apiVersion` 设置为 `v1`，仍然可以被 Helm 3 安装。
+
+从 `v1` 改成 `v2`
+
+- `dependencies` 字段定义 chart 的依赖，在 v1 chart 中这些依赖的定义在一个单独的文件中 `requirements.yaml`。
+- `type` 字段，区分应用程序和 library charts。
+
 #### appVersion 字段
 
+注意 `appVersion` 字段和 `version` 字段没有关系。它是指定应用程序版本的一种方法。例如，drupal chart 可能有一个 `appVersion: 8.2.1`，表示 chart 中包含的 drupal 的版本（默认）是 `8.2.1`。这个字段是信息行的，不影响 chart 版本的计算。
+
 #### kubeVersion 字段
+
+可选的 `kubeVersion` 字段可以定义支持的 Kubernetes 版本的 semver 约束。当 Helm 安装 chart 时，会校验版本约束，如果是不支持的 Kubernetes 版本，则会失败。
+
+版本约束可以包含空格分隔的 AND 比较符，如 `>= 1.13.0 < 1.15.0`。
+
+它们本身可以与 `||` 操作符组合在一起，如 `>= 1.13.0 < 1.14.0 || >= 1.14.1 < 1.15.0`
+
+在这个例子中，`1.14.0` 版本被排除在外，如果某些已知版本的 bug 会阻止 chart 的正常运行，这是有意义的。
+
+除了使用运算符 `=` `!=` `>` `<` `>=` `<=` 的版本约束外，还支持以下速记符号：
+
+- `1.1 - 2.3.4` 相当于 `>= 1.1 <= 2.3.4`。
+- 通配符 `x`、`X` 和 `*`，其中 `1.2.x` 相当于 `>= 1.2.0 < 1.3.0`。
+- 波浪符范围（允许修改补丁版本），其中 `~1.2.3` 相当于 `>= 1.2.3 < 1.3.0`。
+- Caret 范围（允许轻微的版本变化），其中 `^1.2.3`相当于 `>= 1.2.3 < 2.0.0`。
+
+关于支持的 semver 约束的详细解释，参考 [Masterminds/semver](https://github.com/Masterminds/semver)。
 
 #### 弃用的 charts
 

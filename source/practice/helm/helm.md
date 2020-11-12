@@ -545,6 +545,16 @@ Helm 中的许多工具会用到 `Chart.yaml` 中的 `version` 字段，包括 C
 
 #### 弃用的 charts
 
+当在 chart 仓库管理 chart 时，有时可能需要弃用一个 chart。`Chart.yaml` 文字中的可选字段 `deprecated` 可以用来标记一个 chart 已被弃用。如果一个 chart 的最新版本在仓库中被标记为废弃，那么整个 chart 被认为是废弃的。chart 的名称可以在以后发布一个没有被标记废弃的新版本来重复使用。
+
+弃用 chart 的流程，如下 [kubernetes/charts](https://github.com/helm/charts) 项目所示：
+
+1. 更新 chart 的 `Chart.yaml`，将 chart 标记为废弃的，并且更新版本。
+2. 在 chart Repository 中发布新的 chart 版本。
+3. 从源代码库中删除 chart（例如 git）。
+
 #### chart 类型
+
+`type` 字段定义了 chart 的类型。有两个可选的类型：`application` 和 `library`。
 
 ### chart 依赖

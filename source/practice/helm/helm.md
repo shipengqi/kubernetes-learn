@@ -555,6 +555,115 @@ Helm 中的许多工具会用到 `Chart.yaml` 中的 `version` 字段，包括 C
 
 #### chart 类型
 
-`type` 字段定义了 chart 的类型。有两个可选的类型：`application` 和 `library`。
+`type` 字段定义了 chart 的类型。有两个可选的类型：`application` 和 `library`。`application` 是默认类型，是可以完全操作的标准 chart。`library` chart 为 chart builder 提供了使用工具和功能。一个 library chart 与 application chart 不同之处在于，它是不可安装的，通常不包含任何资源对象。
+
+注意，一个 application chart 可以被当做 library chart 使用，只需要设置 `type` 为 `library`。chart 会被当做 library chart 渲染，其中的所有工具和函数都可以被利用。chart 的所有资源不会被渲染。
+
+### Chart LICENSE, README 和 NOTES
+
+charts 可以包含描述 chart 的安装，配置，使用和 lisense 的文件。
 
 ### chart 依赖
+
+在 Helm 中，一个 chart 可能依赖多个其他 charts。这些依赖关系可以通过 `Chart.yaml` 中的 `dependencies` 字段动态链接，也可以放入 `charts/` 目录进行手动管理。
+
+#### 通过 dependencies 字段管理依赖
+
+当前 chart 依赖的 chart 以列表形式定义在 `dependencies` 字段：
+
+```yml
+dependencies:
+  - name: apache
+    version: 1.2.3
+    repository: https://example.com/charts
+  - name: mysql
+    version: 3.2.1
+    repository: https://another.example.com/charts
+```
+
+- `name` chart 的 name
+- `version` chart 的版本
+- `repository` chart 仓库的完整 URL。注意必须使用 `helm repo add`  在本地添加 repo。
+- 你可以使用 repo 的名称而不是 URL。
+
+```bash
+helm repo add fantastic-charts https://fantastic-charts.storage.googleapis.com
+```
+
+```yml
+dependencies:
+  - name: awesomeness
+    version: 1.0.0
+    repository: "@fantastic-charts"
+```
+
+一旦你定义了依赖关系，就可以运行 `helm dependency update`，它会将指定的依赖下载到 `charts` 目录。
+
+```bash
+$ helm dep up foochart
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "local" chart repository
+...Successfully got an update from the "stable" chart repository
+...Successfully got an update from the "example" chart repository
+...Successfully got an update from the "another" chart repository
+Update Complete. Happy Helming!
+Saving 2 charts
+Downloading apache from repo https://example.com/charts
+Downloading mysql from repo https://another.example.com/charts
+```
+
+当 `helm dependency update` 检索 charts 时，它将以 chart 存档的形式存储在 `charts/` 目录下。因此，对于上面的例子，希望在 `charts/` 目录下看到以下文件：
+
+```bash
+charts/
+  apache-1.2.3.tgz
+  mysql-3.2.1.tgz
+```
+
+#### 依赖的 alias 字段
+
+### Templates 和 Values
+
+Helm 的 templates 是用 [Go template](https://golang.org/pkg/text/template/) 写的，增加了 50 多个来自 [Sprig 库](https://github.com/Masterminds/sprig)的附加模板函数和其他一些专业函数。
+
+所有的模版文件存放在 `templates/` 目录下。当 Helm 渲染 charts 时，它会通过模版引擎传递目录中的每一个文件。
+
+给模版提供 Values 有两种方式：
+
+- chart 的开发者可以提供一个 `values.yaml` 文件，这个文件包含默认值。
+- chart 的使用者可以提供一个包含值 YAML 文件。它可以提供给命令行 `helm install`。
+
+当一个使用者提供了自定义的值时，这些值会负载 chart 中 `values.yaml` 文件中的值。
+
+#### 模版文件
+
+模板文件遵循编写 Go 模板的标准约定。一个模版示例：
+
+```yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: deis-database
+  namespace: deis
+  labels:
+    app.kubernetes.io/managed-by: deis
+spec:
+  replicas: 1
+  selector:
+    app.kubernetes.io/name: deis-database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: deis-database
+    spec:
+      serviceAccount: deis-database
+      containers:
+        - name: deis-database
+          image: {{ .Values.imageRegistry }}/postgres:{{ .Values.dockerTag }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: DATABASE_STORAGE
+              value: {{ default "minio" .Values.storage }}
+```

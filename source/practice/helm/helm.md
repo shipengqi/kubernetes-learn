@@ -620,7 +620,252 @@ charts/
   mysql-3.2.1.tgz
 ```
 
-#### 依赖的 alias 字段
+#### alias 字段
+
+除上述其他字段外，每个依赖条目还可包含可选字段 `alias`。
+
+为依赖的 chart 添加别名会将 chart 放入依赖关系中，并使用别名作为新的依赖关系名称。
+
+如果需要使用其他名称访问 chart，可以使用 `alias`。
+
+```yml
+# parentchart/Chart.yaml
+
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-1
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    alias: new-subchart-2
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+```
+
+上面的例子中，可以得到 `parentchart` 的 3 个依赖：
+
+```bash
+subchart
+new-subchart-1
+new-subchart-2
+```
+
+也可以通过手动方法实现，在 `charts/` 中用不同名称多次复制/粘贴目录中的同一个 chart 。
+
+#### tags 和 condition 字段
+
+除上述其他字段外，每个依赖条目还可包含可选字段 `tags` 和 `condition`。
+
+所有 charts 默认会被加载。如果存在 `tags` 和 `condition` 字段，将对它们进行评估并用于控制所应用的 chart 的加载。
+
+**Condition** - `condition` 字段包含一个或多个 YAML 路径（用逗号分隔）。如果此路径存在于顶级父级的值中并且解析为布尔值，则将根据该布尔值启用或禁用 chart。只有在列表中找到的第一个有效路径才被评估，如果没有路径存在，那么该条件不起作用。
+
+**Tags** - `tags` 字段是与 chart 相关联的 YAML 标签列表。在顶级父级的值中，可以通过指定标签和布尔值来启用或禁用所有带有标签的 chart。
+
+```yml
+# parentchart/Chart.yaml
+
+dependencies:
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart1.enabled, global.subchart1.enabled
+    tags:
+      - front-end
+      - subchart1
+  - name: subchart2
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchart2.enabled,global.subchart2.enabled
+    tags:
+      - back-end
+      - subchart2
+```
+
+```yml
+# parentchart/values.yaml
+
+subchart1:
+  enabled: true
+tags:
+  front-end: false
+  back-end: true
+```
+
+上面的示例中，所有的带有标签 `front-end` 的 chart 会被禁用，但是由于父级 `subchart1.enabled` 的值为 `true`，所以此条件将覆盖该 `front-end` 标签，`subchart1` 会启用。
+
+由于 `subchart2` 被标记 `back-end` 和标签为 `true`，`subchart2` 将被启用。要注意的是，虽然 `subchart2` 指定了一个条件，但父值中没有对应的路径和值，因此条件无效。
+
+在命令行中使用 Tags 和 Conditiions，`--set` 参数可用来更改 tag 和 conditions 值。
+
+```bash
+helm install --set tags.front-end=true --set subchart2.enabled=false
+```
+
+Tags 和 Conditiion 解析：
+
+- **Conditions (设置 values) 总会覆盖 tags 配置**。第一个 chart 条件路径存在时会忽略后面的路径。
+- 如果 chart 的某 tag 中的任一 tag 的值为 `true`，那么该 tag 的值为 `true`，并启用这个 chart。
+- Tags 和 conditions 值必须在顶级父级的值中进行设置。
+- key `tags:` 的值中的关键字必须是顶级的关键字。目前不支持全局和嵌套 `tags:` 表格。
+
+#### 导入子值
+
+在某些情况下，允许子 chart 的值传到父 chart 并作为通用默认值共享。使用 `exports` 格式的另一个好处是，它可以使未来的工具能够考虑用户可设置的值。
+
+要导入的 value 的 key 可以在父 chart 的 `dependencies` 中的 `import-values` 字段使用 YAML list 指定。list 列表中的每一个项目都是一个键，它是从子 chart 的 `exports` 字段中导入的。
+
+要导入不包含在 `exports` key 中的值，使用 `child-parent` 格式。下面描述了两种格式的例子。
+
+##### 使用 exports 格式
+
+如果子 chart 的 `values.yaml` 文件中在根节点包含了 `exports` 字段，则可以通过指定要导入的 key 将其内容直接导入到父级的值中， 如下所示：
+
+```yml
+# parent's Chart.yaml file
+
+dependencies:
+  - name: subchart
+    repository: http://localhost:10191
+    version: 0.1.0
+    import-values:
+      - data
+```
+
+```yml
+# child's values.yaml file
+
+exports:
+  data:
+    myint: 99
+```
+
+只要在导入列表中指定了 `data` key，Helm 就会在子 chart 的 `exports` 字段中查找 `data` key 并导入它的内容。
+
+最终的父级 value 会包含我们导出字段：
+
+```yml
+# parent's values
+
+myint: 99
+```
+
+注意 key `data` 没有包含在父级最终的 value 中，如果想指定这个父级键，要使用 `child-parent` 格式。
+
+##### 使用 child-parent 格式
+
+要访问子 chart 中未包含在 `exports` 键中的值，需要指定要导入的值的源 key （child）和父 chart （parent）中值的目标路径。
+
+下面的例子中的 `import-values` 告诉 Helm 去拿在 `child:` 路径发现的任何值，并将其复制到父值 `parent:` 指定的路径：
+
+```yml
+# parent's Chart.yaml file
+
+dependencies:
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    ...
+    import-values:
+      - child: default.data
+        parent: myimports
+```
+
+上面的例子中，在 `subchart1` 里面找到的 `default.data` 的值会被导入到父 chart 的 `myimports` 键中，如下：
+
+```yml
+# parent's values.yaml file
+
+myimports:
+  myint: 0
+  mybool: false
+  mystring: "helm rocks!"
+```
+
+```yml
+# subchart1's values.yaml file
+
+default:
+  data:
+    myint: 999
+    mybool: true
+```
+
+父 chart 的结果值将会是这样：
+
+```yml
+# parent's final values
+
+myimports:
+  myint: 999
+  mybool: true
+  mystring: "helm rocks!"
+```
+
+父 chart 中的最终值包含了从 `subchart1` 中导入的 `myint` 和 `mybool` 字段。
+
+### 通过 charts/ 目录手动管理依赖
+
+如果对依赖进行更多控制，可以将有依赖关系的 chart 复制到 `charts/` 目录中来显式表达这些依赖关系。
+
+依赖可以是 chart 包（`foo-1.2.3.tgz`）或者一个解压的 chart 目录。但是名字不能以 `_` 或 `.` 开头，否则会被 chart 加载器忽略。
+
+比如，WordPress chart 依赖于 Apache chart，那么 Apache chart （正确版本的）需要放在 WordPress chart 的 `charts/` 目录中：
+
+```bash
+wordpress:
+  Chart.yaml
+  # ...
+  charts/
+    apache/
+      Chart.yaml
+      # ...
+    mysql/
+      Chart.yaml
+      # ...
+```
+
+上面的例子展示了 WordPress chart 如何通过将这些 chart 包含在 `charts/` 目录中来表示它对 Apache 和 MySQL 的依赖。
+
+注意，使用 `helm pull` 命令，将依赖放入 `charts/` 目录。
+
+假设一个命名为 A 的 chert 创建了一下 Kubernetes 对象：
+
+- namespace "A-Namespace"
+- statefulset "A-StatefulSet"
+- service "A-Service"
+
+另外，A 以来于 chart B 从创建的对象：
+
+- namespace "B-Namespace"
+- replicaset "B-ReplicaSet"
+- service "B-Service"
+
+安装/升级 chart A 后，会创建/修改一个单独的 Helm release。这个版本会按照下面的顺序创建/升级以下所有的 Kubernetes 对象：
+
+- A-Namespace
+- B-Namespace
+- A-Service
+- B-Service
+- B-ReplicaSet
+- A-StatefulSet
+
+这是因为 Helm 安装/升级 cherts 时，chart 中所有的 Kubernetes 对象以及依赖会：
+
+- 聚合成一个单一的集合；然后
+- 按类型排序，然后按名称排序；然后
+- 按这个顺序 创建/升级。
+
+至此会为 chart 及其依赖创建一个包含所有对象的 release 版本。
+
+Kubernetes 类型的安装顺序，按照 [kind_sorter.go](https://github.com/helm/helm/blob/484d43913f97292648c867b56768775a55e4bba6/pkg/releaseutil/kind_sorter.go) 中给出的枚举 `InstallOrder` 排序。
+
+#### 使用依赖的操作部分
+
+上面的部分解释了如何指定 chart 的但是，但是对使用 `helm install` 和 `helm upgrade` 安装 chart 有什么影响？
 
 ### Templates 和 Values
 
@@ -667,3 +912,104 @@ spec:
             - name: DATABASE_STORAGE
               value: {{ default "minio" .Values.storage }}
 ```
+
+上面的例子，基于 <https://github.com/deis/charts>， 是一个 Kubernetes ReplicationController 的模板。可以使用下面四种模板值（一般被定义在 `values.yaml` 文件）：
+
+- `imageRegistry`: Docker image 的 repo
+- `dockerTag`: Docker image 的 tag
+- `pullPolicy`: image 的拉取策略
+- `storage`: 后台存储，默认设置为 "minio"
+
+所有的值都是模板作者定义的。Helm 不需要或指定参数。
+
+#### 预定义的 Values
+
+Values 可以通过模板中 `.Values` 对象访问的 `values.yaml` 文件（或者通过 `--set` 参数）提供。但是可以在模板中访问其他预定义的数据片段。
+
+以下值是预定义的，可用于每个模板，并且不能被覆盖。与所有 Values 一样，名称时大小写敏感的。
+
+- `Release.Name`: Release 名称(不是 chart 的)
+- `Release.Namespace`: chart 所发布到的 namespace
+- `Release.Service`: 处理 release 的服务
+- `Release.IsUpgrade`: 如果当前操作是升级或回滚，则为 `true`
+- `Release.IsInstall`: 如果当前操作是安装，则为 `true`
+- `Chart`: `Chart.yaml` 的内容。因此，chart 的版本可以通过 `Chart.Version` 获得， 并且维护者在 `Chart.Maintainers` 里。
+- `Files`: chart 中的包含了非特殊文件的 map-like 对象。不允许访问模板， 但是可以访问现有的其他文件（除非被 `.helmignore` 排除在外）。使用 `{{ index .Files "file.name" }}` 可以访问文件或者使用 `{{.Files.Get name }}` 功能。 也可以使用 `{{ .Files.GetBytes }}` 作为 `[]byte` 访问文件内容。
+- `Capabilities`: 包含了 Kubernetes 版本信息的 map-like 对象。(`{{ .Capabilities.KubeVersion }}` 和支持的 Kubernetes API 版本(`{{ .Capabilities.APIVersions.Has "batch/v1" }}`)
+
+注意：任何未知的 `Chart.yaml` 字段会被抛弃。它们无法在 `Chart` 对象中访问。因此， `Chart.yaml` 不能用于将任意结构的数据传递到模板中。不过 values 文件可以用于传递。
+
+#### Values 文件
+
+考虑到前面部分的模板，`values.yaml` 文件必须要提供的值如下：
+
+```yml
+imageRegistry: "quay.io/deis"
+dockerTag: "latest"
+pullPolicy: "Always"
+storage: "s3"
+```
+
+values 文件为 YAML 格式。chart 会包含一个默认的 `values.yaml` 文件。 Helm 安装命令允许用户提供附加的 YAML values 来覆盖这个 values：
+
+```bash
+helm install --generate-name --values=myvals.yaml wordpress
+```
+
+`-f` 是 `--values` 的简写。
+
+以这种方式传递值时，它们会合并到默认的 values 文件中。比如，`myvals.yaml` 文件如下：
+
+```yml
+storage: "gcs"
+```
+
+当在 chart 中这个值被合并到 `values.yaml` 文件中时，生成的内容是这样：
+
+```yml
+imageRegistry: "quay.io/deis"
+dockerTag: "latest"
+pullPolicy: "Always"
+storage: "gcs"
+```
+
+注意只有最后一个字段会覆盖。
+
+注意：chart 包含的默认 values 文件必须被命名为 `values.yaml`。不过在命令行指定的文件可以是其他名称。
+
+注意：如果 `helm install` 或 `helm upgrade` 使用了 `--set` 参数，这些值在客户端会被简单地转换为 YAML。
+
+注意：如果 values 文件存在任何必需的条目，可以在 chart 模板中使用 `'required' 函数` 声明为必需的。
+
+然后使用模板中的 `.Values` 对象就可以任意访问这些值了：
+
+```yml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: deis-database
+  namespace: deis
+  labels:
+    app.kubernetes.io/managed-by: deis
+spec:
+  replicas: 1
+  selector:
+    app.kubernetes.io/name: deis-database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: deis-database
+    spec:
+      serviceAccount: deis-database
+      containers:
+        - name: deis-database
+          image: {{ .Values.imageRegistry }}/postgres:{{ .Values.dockerTag }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: DATABASE_STORAGE
+              value: {{ default "minio" .Values.storage }}
+```
+
+#### Scope, Dependencies 和 Values

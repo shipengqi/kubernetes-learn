@@ -1013,3 +1013,257 @@ spec:
 ```
 
 #### Scope, Dependencies 和 Values
+
+Values 文件可以声明顶级 chart 的值，也可以为 `charts/` 目录中包含的其他任意 chart 声明值。 或者换个说法，values 文件可以为 chart 及其任何依赖项提供值。比如，上面示例的 WordPress chart 同时有 mysql 和 apache 作为依赖。values 文件可以为以下所有这些组件提供值：
+
+```yml
+title: "My WordPress Site" # Sent to the WordPress template
+
+mysql:
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
+
+apache:
+  port: 8080 # Passed to Apache
+```
+
+更高级别的 chart 可以访问下面定义的所有变量。所以 WordPress chart 可以通过 `.Values.mysql.password` 访问 mysql 密码。但较低级别的 chart 无法访问父 chart 中的内容，因此 mysql 将无法访问该 `title` 属性。同样的，也不能访问 `apache.port`。
+
+值是命名空间限制的，但命名空间被删减了。因此对于 WordPress chart 来说，它可以访问 `.Values.mysql.password`。但是对于 MySQL chart 来说，这些值的范围已经减小了，并且删除了名 namespace 前缀，将密码字段简单地视为 `.Values.password`。
+
+#### 全局 Values
+
+从 2.0.0-Alpha.2 开始，Helm 支持特殊的 "global" 值。设想一下前面的示例中的修改版本：
+
+```yml
+title: "My WordPress Site" # Sent to the WordPress template
+
+global:
+  app: MyWordPress
+
+mysql:
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
+
+apache:
+  port: 8080 # Passed to Apache
+```
+
+上面添加了 `global` 部分和一个值 `app: MyWordPress`。这个值以 `.Values.global.app` 在所有 chart 中有效。
+
+比如，mysql 模板可以以 `{{.Values.global.app}}` 访问 app，同样 apache chart 也可以访问。 实际上，上面的 values 文件会重新生成为这样：
+
+```yml
+title: "My WordPress Site" # Sent to the WordPress template
+
+global:
+  app: MyWordPress
+
+mysql:
+  global:
+    app: MyWordPress
+  max_connections: 100 # Sent to MySQL
+  password: "secret"
+
+apache:
+  global:
+    app: MyWordPress
+  port: 8080 # Passed to Apache
+```
+
+这提供了一种和所有的子 chart 共享顶级变量的方式，这在类似 label 设置 metadata 属性时会很有用。
+
+如果子 chart 声明了一个全局变量，那这个变量会**向下传递**（到子 chart 的子 chart），但不会向上传递到父级 chart。 子 chart 无法影响父 chart 的值。
+
+并且，**父 chart 的全局变量优先于子 chart 中的全局变量**。
+
+#### 架构文件
+
+有时候，chart 的维护者可能想要给 values 定义一个结构体。 这可以通过在 `values.schema.json` 文件中定义一个  schema 来实现。一个 shcema 可以使用 [JSON schema](https://json-schema.org/) 来表示。看起来像这样：
+
+```yml
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "properties": {
+    "image": {
+      "description": "Container Image",
+      "properties": {
+        "repo": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": {
+      "description": "Service name",
+      "type": "string"
+    },
+    "port": {
+      "description": "Port",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "protocol": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol",
+    "port"
+  ],
+  "title": "Values",
+  "type": "object"
+}
+```
+
+这个 schema 将被应用到 values 并验证它。当执行以下任意命令时会进行验证：
+
+- `helm install`
+- `helm upgrade`
+- `helm lint`
+- `helm template`
+
+一个符合此 schema 要求的 `values.yaml` 文件示例如下所示：
+
+```yml
+name: frontend
+protocol: https
+port: 443
+```
+
+注意这个 schema 被应用到了最终的 `.Values` 对象，而不仅仅是这个 `values.yaml` 文件。这意味着下面的 `yaml` 文件是有效的，因为 chart 是用下面带 `--set` 选项安装的：
+
+```yml
+name: frontend
+protocol: https
+```
+
+```bash
+helm install --set port=443
+```
+
+此外，最终的 `.Values` 对象是根据所有的子 chart  schema 检查。 这意味着父 chart 无法规避子 chart 的限制。这也是逆向的 - 如果子 chart 的 `values.yaml` 文件无法满足需求，父 chart 必须 满足这些限制才能有效。
+
+#### 参考
+
+在编写 templates， values 和 schema 文件时，有几个标准的参考可以帮助你：
+
+- [Go templates](https://godoc.org/text/template)
+- [Extra template functions](https://godoc.org/github.com/Masterminds/sprig)
+- [The YAML format](https://yaml.org/spec/)
+- [JSON Schema](https://json-schema.org/)
+
+### 用户自定义资源（CRD）
+
+Kubernetes 提供了一种声明 Kubernetes 新类型对象的机制。使用 CustomResourceDefinition（CRD）， Kubernetes 开发者可以声明自定义资源类型。
+
+Helm 3 中,CRD 被视为一种特殊的对象。它们被安装在 chart 的其他部分之前，并受到一些限制。
+
+CRD YAML 文件应被放置在 chart 的 `crds/` 目录中。多个 CRD（用 YAML 的开始和结束符分隔）可以被放在同一个文件中。Helm 会尝试加载 CRD 目录中所有文件到 Kubernetes 中。
+
+**CRD 文件无法模板化**，必须是普通的 YAML 文档。
+
+当 Helm 安装新 chart 时，会上传 CRD，暂停安装直到 CRD 可以被 API 服务使用，然后启动模板引擎， 渲染 chart 其他部分，并上传到 Kubernetes。因为这个顺序，CRD 信息会在 Helm 模板中的 `.Capabilities` 对象中生效，并且 Helm 模板会创建在 CRD 中声明的新的实例对象。
+
+例如，如果你的 chart 在 `crds/` 目录中有针对于 `CronTab` 的 CRD，你可以在 `templates/` 目录中创建 `CronTab` 类型实例：
+
+```yml
+crontabs/
+  Chart.yaml
+  crds/
+    crontab.yaml
+  templates/
+    mycrontab.yaml
+```
+
+`crontab.yaml` 文件不能包含模板指令：
+
+```yml
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.stable.example.com
+spec:
+  group: stable.example.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+```
+
+然后模板 `mycrontab.yaml` 可以创建一个新的 `CronTab`（照例使用模板）：
+
+```yml
+apiVersion: stable.example.com
+kind: CronTab
+metadata:
+  name: {{ .Values.name }}
+spec:
+   # ...
+```
+
+Helm 在安装 `templates/` 目录下的内容之前会保证 `CronTab` 类型安装成功并对 Kubernetes API 可用。
+
+#### CRD 的限制
+
+不像大部分的 Kubernetes 对象，CRD 是全局安装的。因此 Helm 管理 CRD 时会采取非常谨慎的方式。 CRD 受到以下限制：
+
+- CRD 永远不会被重新安装。如果 Helm 确定 `crds/` 目录中的 CRD 已经存在（忽略版本），Helm 将不会安装或升级。
+- CRD 永远不会在升级或回滚时安装。Helm 只会在安装操作时创建 CRD。
+- CRD 永远不会被删除。自动删除 CRD 会删除集群中所有命名空间中的所有 CRD 内容。因此 Helm 不会删除 CRD。
+
+想要升级或删除 CRD 的操作者应该谨慎地手动执行此操作。
+
+### 使用 Helm 管理 Chart
+
+helm 工具有一系列命令用来处理 chart。
+
+它可以为你创建一个新 chart：
+
+```bash
+$ helm create mychart
+Created mychart/
+```
+
+编辑了 chart 之后，helm 能把它打包成一个 chart 存档：
+
+```bash
+$ helm package mychart
+Archived mychart-0.1.-.tgz
+```
+
+也可以使用 helm 找到 chart 的格式或信息的问题：
+
+```bash
+$ helm lint mychart
+No issues found
+```
+
+### Chart 仓库
+
+chart 仓库是一个 HTTP 服务器，包含了一个或多个打包的 chart。helm 可以用来管理本地 chart 目录，当需要共享 chart 时，首选的机制就是使用 chart 仓库。
+
+任何可以服务于 YAML 文件和 tar 文件并可以响应 GET 请求的 HTTP 服务器都可以用做仓库服务器。 Helm 团队已经测试了一些服务器，包括 Google Cloud Storage，以及使用 website 的 S3。
+
+仓库的主要特征存在一个名为 `index.yaml` 的特殊文件，这个文件中包含仓库提供的包的完整列表， 以及允许检索和验证这些包的元数据。
+
+在客户端，仓库使用 `helm repo` 命令管理。然而，Helm 不提供上传 chart 到远程仓库的工具。 这是因为这样做会给执行服务器增加大量的必要条件，也就增加了设置仓库的障碍。
+
+### Chart Starter 包
+
+`helm create` 命令可以附带一个可选的 `--starter` 选项让你指定一个 "starter chart"。
+
+Starter 就只是普通 chart，但是被放在 `$XDG_DATA_HOME/helm/starters`。作为一个 chart 开发者，你可以编写被特别设计用来作为启动的 chart。设计此类 chart 应注意以下考虑因素：
+
+- `Chart.yaml` 将被生成器覆盖。
+- 用户可能想要修改此类 chart 的内容，所以文档应该说明用户如何做到这一点。
+- 所有出现的 `<CHARTNAME>` 都会被替换为指定为 chart 名称，以便 chart 可以作为模板使用。
+
+当前在 `$XDG_DATA_HOME/helm/starters` 目录中增加一个 chart 的唯一方式就是手动拷贝一个 chart 到这个目录。在 chart 文档中，可能需要解释这个过程。

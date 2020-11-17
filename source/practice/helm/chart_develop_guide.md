@@ -219,3 +219,39 @@ data:
 ```
 
 使用 `--dry-run` 可以更容易地测试你的代码，但不能确保 Kubernetes 本身会接受生成的模板。不要因为 `--dry-run` 成功就假定你的 chart 可以安装。
+
+## 内置对象
+
+对象从模板引擎传递到模板中。你的代码可以传递对象（我们将在说明 `with` 和 `range` 语句时看到示例）。有几种方法在模板中创建新对象，就像我们稍后会看的 `tuple` 函数一样。
+
+对象可以是简单的，只有一个值。或者它们可以包含其他对象或函数。例如 `Release` 对象包含多个对象（如 `Release.Name`）和 `File` 对象包含了一些函数。
+
+在上一节中，我们使用 `{{.Release.Name}}` 将 release 的名称插入到模板中。`Release` 是可以在你的模板中访问的顶级对象之一。
+
+- `Release`: 这个对象描述了 release 本身。它里面有几个对象：
+  - `Release.Name`: release 名称
+  - `Release.Namespace`: release 所在的 namespace (如果没有被覆盖)
+  - `Release.IsUpgrade`: 如果当前操作是 upgrade 或者 rollback，则为 `true`。
+  - `Release.IsInstall`: 如果当前操作是 install，则为 `true`。
+  - `Release.Revision`: 此 release 的修订版本号。它从 1 开始，每次 upgrade 或者 rollback 则增加 1。
+  - `Release.Service`: 正在渲染当前模板的服务。在 Helm 上，这总是 `Helm`。
+- `Values`: 从 `values.yaml` 文件和用户提供的文件传入模板的值。`Values` 默认是空的。
+- `Chart`: `Chart.yaml` 的内容。 `Chart.yaml` 中的所有数据都是可访问的。例如 `{{ .Chart.Name }}-{{ .Chart.Version }}` 会打印出 `mychart-0.1.0`。[Charts Guide](https://helm.sh/docs/topics/charts/#the-chartyaml-file) 列出了所有可用的字段。
+- `Files`: 提供对 chart 中所有非特殊文件的访问。虽然无法使用它来访问模板，但可以使用它来访问 chart 中的其他文件。参考 "访问文件" 部分。
+  - `Files.Get` 是一个按名称获取文件的函数 (`.Files.Get config.ini`)
+  - `Files.GetBytes` 是将文件内容作为字节数组而不是字符串获取的函数。
+  - `Files.Glob` 是一个返回与 shell glob 模式匹配的文件列表的函数。
+  - `Files.Lines` 是一个逐行读取文件的函数。这对于迭代文件中的每一行非常有用。
+  - `Files.AsSecrets` 是一个以 Base 64 编码字符串返回文件体的函数。
+  - `Files.AsConfig` 是一个以 YAML 映射形式返回文件体的函数。
+- `Capabilities`: 这提供了关于 Kubernetes 集群支持的功能的信息。
+  - `Capabilities.APIVersions` 是一组版本信息。
+  - `Capabilities.APIVersions.Has $version` 表示一个版本 (如 `batch/v1`) 或者资源（如 `apps/v1/Deployment`）在集群中是否可用。
+  - `Capabilities.KubeVersion` 和 `Capabilities.KubeVersion.Version` 是 Kubernetes 的版本。
+  - `Capabilities.KubeVersion.Major` 是 Kubernetes 的主版本号。
+  - `Capabilities.KubeVersion.Minor` 是 Kubernetes 的次版本号。
+- `Template`: 包含有关当前正在执行的模板信息
+  - `Template.Name`: 当前模板的命名空间文件路径（如 `mychart/templates/mytemplate.yaml`）。
+  - `Template.BasePath`: 当前 chart 的模板目录的命名空间路径（如 `mychart/templates`）。
+
+内建的 values 总是以大写字母开头。这延续了 Go 的命名约定。当你创建自己的名字时，你可以自由地使用适合你的团队的惯例。一些团队，如 Kubernetes chart 团队，选择仅使用首字母小写字母来区分本地名称与内置名称。在本指南中，我们遵循该约定。

@@ -255,3 +255,161 @@ data:
   - `Template.BasePath`: 当前 chart 的模板目录的命名空间路径（如 `mychart/templates`）。
 
 内建的 values 总是以大写字母开头。这延续了 Go 的命名约定。当你创建自己的名字时，你可以自由地使用适合你的团队的惯例。一些团队，如 Kubernetes chart 团队，选择仅使用首字母小写字母来区分本地名称与内置名称。在本指南中，我们遵循该约定。
+
+## Values 文件
+
+上一节中，了解了 Helm 模版的内置对象。`Values` 是四个内置对象之一。这个对象可以访问传入到 chart 的值。内容的多个来源：
+
+- chart 中的 `values.yaml` 文件
+- 如果是一个子 chart， 父 chart 的 `values.yaml` 文件
+- 通过 `helm install` 或者 `helm upgrade` 命令参数 `-f` 传入 balues 文件。(`helm install -f myvals.yaml ./mychart`)
+- 通过 `--set` 参数指定的值 (如 `helm install --set foo=bar ./mychart`)
+
+上面的列表的按照指定的顺序：`values.yaml` 是默认的，可以被父 chart 的 `values.yaml` 覆盖，它们又可以被用户提供的 values 文件覆盖，而这些又可以被 `--set` 参数指定的值覆盖。
+
+Values 文件是普通的 YAML 文件。编辑 `mychart/values.yaml`，然后来编辑我们的 ConfigMap 模板。
+
+删除默认的 `values.yaml`，我们只设置一个参数：
+
+```yml
+favoriteDrink: coffee
+```
+
+现在我们可以在模板中使用这个：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favoriteDrink }}
+```
+
+注意我们在最后一行通过 `{{ .Values.favoriteDrink}}` 获取 `favoriteDrink` 字段的值。
+
+看看这是如何渲染的：
+
+```bash
+$ helm install geared-marsupi ./mychart --dry-run --debug
+install.go:158: [debug] Original chart version: ""
+install.go:175: [debug] CHART PATH: /home/bagratte/src/playground/mychart
+
+NAME: geared-marsupi
+LAST DEPLOYED: Wed Feb 19 23:21:13 2020
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+USER-SUPPLIED VALUES:
+{}
+
+COMPUTED VALUES:
+favoriteDrink: coffee
+
+HOOKS:
+MANIFEST:
+---
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: good-puppy-configmap
+data:
+  myvalue: "Hello World"
+  drink: coffee
+```
+
+由于 `favoriteDrink` 在默认 `values.yaml` 文件中设置为 `coffee`，这就是模板中显示的值。我们可以轻松地在 `helm install` 命令中通过加一个 `--set` 添标志来覆盖：
+
+```bash
+$ helm install solid-vulture ./mychart --dry-run --debug --set favoriteDrink=slurm
+install.go:158: [debug] Original chart version: ""
+install.go:175: [debug] CHART PATH: /home/bagratte/src/playground/mychart
+
+NAME: solid-vulture
+LAST DEPLOYED: Wed Feb 19 23:25:54 2020
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+USER-SUPPLIED VALUES:
+favoriteDrink: slurm
+
+COMPUTED VALUES:
+favoriteDrink: slurm
+
+HOOKS:
+MANIFEST:
+---
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: good-puppy-configmap
+data:
+  myvalue: "Hello World"
+  drink: slurm
+```
+
+由于 `--set` 的优先级比默认 `values.yaml` 文件更高，所以模板生成 `drink: slurm`。
+
+values 文件也可以包含更多结构化内容。例如，我们在 `values.yaml` 文件中创建 `favorite` 部分，然后在其中添加几个键：
+
+```yml
+favorite:
+  drink: coffee
+  food: pizza
+```
+
+现在我们稍微修改模板：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink }}
+  food: {{ .Values.favorite.food }}
+```
+
+虽然以这种方式构建数据是可以的，但建议保持 value 树浅一些，平一些。当我们看看为子 chart 分配值时，我们将看到如何使用树结构来命名值。
+
+### 删除一个默认的 key
+
+如果需要从默认值中删除一个键，可以覆盖该键的值为 `null`，在这种情况下，Helm 将在覆盖合并中删除该键。
+
+例如，stable 版本的 Drupal chart 允许配置 liveness probe，如果配置了自定义的 image。以下是默认值：
+
+```yml
+livenessProbe:
+  httpGet:
+    path: /user/login
+    port: http
+  initialDelaySeconds: 120
+```
+
+如果你尝试使用 `--set livenessProbe.exec.command=[cat,docroot/CHANGELOG.txt]` 覆盖 liveness Probe 处理程序用 `exec` 替代 `httpGet`，Helm 会将默认和重写的键合并在一起，产生以下 YAML：
+
+```yml
+livenessProbe:
+  httpGet:
+    path: /user/login
+    port: http
+  exec:
+    command:
+    - cat
+    - docroot/CHANGELOG.txt
+  initialDelaySeconds: 120
+```
+
+然而，Kubernetes 会失败，因为不能声明多于一个的 livenessProbe 处理程序。为了解决这个问题，可以指示 Helm 过将 `livenessProbe.httpGe`t 通设置为 `null` 来删除它：
+
+```bash
+helm install stable/drupal --set image=my-registry/drupal:0.1.0 --set livenessProbe.exec.command=[cat,docroot/CHANGELOG.txt] --set livenessProbe.httpGet=null
+```
+
+## 函数和管道

@@ -413,3 +413,198 @@ helm install stable/drupal --set image=my-registry/drupal:0.1.0 --set livenessPr
 ```
 
 ## 函数和管道
+
+目前为止，我们已经知道如何将信息放入模板中。但是这些信息未经修改就被放入模板中。有时我们想要转换这些数据，使得他们对我们来说更有用。
+
+从一个最佳实践开始：当从 `.Values` 对象注入字符串到模板中时，我们引用这些字符串。我们可以通过调用 `quote` 模板指令中的函数来实现：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ quote .Values.favorite.drink }}
+  food: {{ quote .Values.favorite.food }}
+```
+
+模板函数遵循语法 `functionName arg1 arg2...` 。在上面的代码片段中，`quote .Values.favorite.drink` 调用 `quote` 函数并将一个参数传递给它。
+
+Helm 拥有超过 60 种可用函数。其中一些是由 [Go template language](https://godoc.org/text/template) 本身定义的。其他大多数都是 [Sprig template library](https://godoc.org/github.com/Masterminds/sprig) 的一部分。在我们讲解例子进行的过程中，我们会看到很多。
+
+### 管道
+
+模板语言的强大功能之一是其管道概念。利用 UNIX 的一个概念，管道是一个链接在一起的一系列模板命令的工具，以紧凑地表达一系列转换。换句话说，管道是按顺序完成几件事情的有效方式。我们用管道重写上面的例子。
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | quote }}
+  food: {{ .Values.favorite.food | quote }}
+```
+
+在这个例子中，没有调用 `quote ARGUMENT`，我们调换了顺序。我们使用管道 `|` 将 “参数” 发送给函数：`.Values.favorite.drink | quote`。使用管道，我们可以将几个功能链接在一起：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+```
+
+当评估时，该模板将产生如下结果：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trendsetting-p-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+```
+
+注意，原来的 `pizza` 已经转换为 `PIZZA`。
+
+当有像这样管道参数时，第一个评估（`.Values.favorite.drink`）的结果将作为函数的最后一个参数发送。我们可以修改上面的 drink 示例来说明一个带有两个参数的函数 `repeat COUNT STRING`：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | repeat 5 | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+```
+
+`repeat` 函数将给定的字符串进行给定的次数 echo，所以我们将得到这个输出：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: melting-porcup-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffeecoffeecoffeecoffeecoffee"
+  food: "PIZZA"
+```
+
+### 使用 default 函数
+
+模版中经常使用的一个函数是 `default`：`default DEFAULT_VALUE GIVEN_VALUE`。该功能允许在模板内部指定默认值，以防该值被省略。让我们用它来修改上面的 drink 示例：
+
+```yml
+drink: {{ .Values.favorite.drink | default "tea" | quote }}
+```
+
+如果我们像往常一样运行，我们会得到 `coffee`：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: virtuous-mink-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+```
+
+现在，我们在 `values.yaml` 中删除 `favorite.drink`：
+
+```yml
+favorite:
+  #drink: coffee
+  food: pizza
+```
+
+现在重新运行 `helm install --dry-run --debug fair-worm ./mychart` 会产生 YAML：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fair-worm-configmap
+data:
+  myvalue: "Hello World"
+  drink: "tea"
+  food: "PIZZA"
+```
+
+在实际的 chart 中，所有静态默认值应该存在于 `values.yaml` 中，不应该使用该 `default` 命令重复（否则它们将是重复多余的）。但是，`default` 命令对于计算的值是合适的，因为计算值不能在 `values.yaml` 中声明。例如：
+
+```yml
+drink: {{ .Values.favorite.drink | default (printf "%s-tea" (include "fullname" .)) }}
+```
+
+在一些地方，一个 `if` 条件可能比这 `default` 更适合。我们将在下一节中看到这些。
+
+### 使用 lookup 函数
+
+lookup 函数可以用来查找正在运行的集群中的资源。lookup 函数概要是 `lookup apiVersion, kind, namespace, name -> resource or resource list`。
+
+```bash
+parameter     type
+-------------------
+apiVersion   string
+kind         string
+namespace    string
+name         string
+```
+
+`name` 和 `namespace` 都是可选的，可以传递一个空字符串 (`""`)。
+
+可采用以下参数组合：
+
+```bash
+Behavior                                             Lookup function
+--------------------------------------------------------------------------------------
+kubectl get pod mypod -n mynamespace           lookup "v1" "Pod" "mynamespace" "mypod"
+kubectl get pods -n mynamespace                lookup "v1" "Pod" "mynamespace" ""
+kubectl get pods --all-namespaces              lookup "v1" "Pod" "" ""
+kubectl get namespace mynamespace              lookup "v1" "Namespace" "" "mynamespace"
+kubectl get namespaces                         lookup "v1" "Namespace" "" ""
+```
+
+当 `lookup` 返回一个对象时，它将返回一个字典。这个字典可以被进一步浏览以提取特定的值。
+
+下面的例子将返回 `mynamespace` 对象的 annotations。
+
+```yml
+(lookup "v1" "Namespace" "" "mynamespace").metadata.annotations
+```
+
+当 `lookup` 返回一个对象列表时，可以通过 `item` 字段访问列表对象：
+
+```yml
+{{ range $index, $service := (lookup "v1" "Service" "mynamespace" "").items }}
+    {{/* do something with each service */}}
+{{ end }}
+```
+
+没有找到对象时，返回一个空值。这可以用来检测对象是否存在。
+
+`lookup` 函数使用当前 Helm 现有的 Kubernetes 连接配置来查询 Kubernetes。如果在与调用 API 服务器交互时返回任何错误（例如由于缺乏访问资源的权限）， helm 的模板处理将失败。
+
+请记住，在 `helm template` 或 `helm install|update|delete|rollback --dry-run` 期间，Helm 不会连接 Kubernetes API Server，所以在这种情况下，查找函数将返回一个空列表（即 `dict`）。
+
+### 运算符函数
+
+对于模板，操作符 (`eq`、`ne`、`lt`、`gt`、`and`、`or`等等) 都被作为函数实现。在管道中，运算符可以用圆括号（`(` 和 `)`）分组。

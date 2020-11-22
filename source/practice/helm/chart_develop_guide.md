@@ -461,7 +461,7 @@ data:
   food: {{ .Values.favorite.food | upper | quote }}
 ```
 
-当评估时，该模板将产生如下结果：
+当求值时，该模板将产生如下结果：
 
 ```yml
 # Source: mychart/templates/configmap.yaml
@@ -477,7 +477,7 @@ data:
 
 注意，原来的 `pizza` 已经转换为 `PIZZA`。
 
-当有像这样管道参数时，第一个评估（`.Values.favorite.drink`）的结果将作为函数的最后一个参数发送。我们可以修改上面的 drink 示例来说明一个带有两个参数的函数 `repeat COUNT STRING`：
+当有像这样管道参数时，第一个求值（`.Values.favorite.drink`）的结果将作为函数的最后一个参数发送。我们可以修改上面的 drink 示例来说明一个带有两个参数的函数 `repeat COUNT STRING`：
 
 ```yml
 apiVersion: v1
@@ -608,3 +608,370 @@ kubectl get namespaces                         lookup "v1" "Namespace" "" ""
 ### 运算符函数
 
 对于模板，操作符 (`eq`、`ne`、`lt`、`gt`、`and`、`or`等等) 都被作为函数实现。在管道中，运算符可以用圆括号（`(` 和 `)`）分组。
+
+## 流程控制
+
+控制结构（模板中称为 “actions”）为模板作者提供了控制模板生成流程的能力。Helm 的模版语言提供了以下控制结构：
+
+- `if/else` 创建条件块
+- `with` 指定域
+- `range`, 它提供了一个 `for each` 风格的循环
+
+除了这些之外，还提供了一些用于声明和使用命名模版的 actions：
+
+- `define` 在你的模版中声明一个新的命名模版
+- `template` 导入一个命名模版
+- `block` 声明一种可填充模板区域的特殊类型
+
+在本节中，将谈论 `if`，`with` 和 `range`。其他内容在后面的 “命名模板” 一节中介绍。
+
+### if/else
+
+我们要看的第一个控制结构是用于在模板中有条件地包含文本块。这就是 `if/else` 块。
+
+基本的条件结构：
+
+```yml
+{{ if PIPELINE }}
+  # Do something
+{{ else if OTHER PIPELINE }}
+  # Do something else
+{{ else }}
+  # Default case
+{{ end }}
+```
+
+注意，我们现在讨论的是管道而不是 values。其原因是要明确控制结构可以执行整个管道，而不仅仅是计算一个值。
+
+如果值为如下情况，则管道求值为 `false`：
+
+- 一个布尔值 `false`
+- 一个数值 0
+- 一个空字符串
+- `nil`
+- 一个空集合 (`map`, `slice`, `tuple`, `dict`, `array`)
+
+在其他情况下, 条件为 `true`。
+
+我们添加一个简单的条件在我们的 ConfigMap 中。我们添加一个其他配置当 drink 是 coffe 时。
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{ if eq .Values.favorite.drink "coffee" }}mug: true{{ end }}
+```
+
+由于我们在上一个示例中注释掉了`drink: coffee`，所以输出不应该包括 `mug: true`。但是如果我们把它添加回到 `values.yaml` 文件中，输出会像下面这样：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eyewitness-elk-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+  mug: true
+```
+
+在查看条件时，我们应该快速查看模板中的空格控制方式。我们采取前面的例子和格式化使它更容易阅读:
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{ if eq .Values.favorite.drink "coffee" }}
+    mug: true
+  {{ end }}
+```
+
+最初，这看起来不错。但是如果我们通过模板引擎运行它，我们会得到一个错误的结果：
+
+```bash
+$ helm install --dry-run --debug ./mychart
+SERVER: "localhost:44134"
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart
+Error: YAML parse error on mychart/templates/configmap.yaml: error converting YAML to JSON: yaml: line 9: did not find expected key
+```
+
+发生了什么？我们生成了一个错误的 YAML 因为上面的空格。
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eyewitness-elk-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+    mug: true
+```
+
+`mug` 是的缩进是错误的。简单地将那行减少缩进，然后重新运行：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{ if eq .Values.favorite.drink "coffee" }}
+  mug: true
+  {{ end }}
+```
+
+当我们发送该信息时，我们会得到有效的 YAML，但仍然看起来有点意思：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telling-chimp-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+
+  mug: true
+
+```
+
+注意我们收到的 YAML 中有一些空行。为什么？当模版引擎删除 `{{` 和 `}}` 中的内容时，但是按原样保留剩余的空白。
+
+YAML 中的缩进空格是严格的，因此管理空格变得非常重要。幸运的是，Helm 模板有一些工具可以帮助我们。
+
+首先，可以用特殊字符修改模板声明的花括号语法，以告诉模板引擎删除空白。`{{-` 表示删除左空格，`-}}` 意味着应该删除右空格。注意！换行符也是空格！
+
+> 确保 `-` 和其他指令之间有空格。`{{ -3 }}` 意思是 “删除左空格并打印 3”，而 `{{-3 }}` 意思是 “打印 `-3`”。
+
+使用这个语法，我们可以修改我们的模板来摆脱这些新行：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{- if eq .Values.favorite.drink "coffee" }}
+  mug: true
+  {{- end }}
+```
+
+为了清楚说明这一点，让我们调整上面的内容，将空格替换为 `*`, 按照此规则将每个空格将被删除。一个在该行的末尾的 `*` 指示换行符将被移除
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  drink: {{ .Values.favorite.drink | default "tea" | quote }}
+  food: {{ .Values.favorite.food | upper | quote }}*
+**{{- if eq .Values.favorite.drink "coffee" }}
+  mug: true*
+**{{- end }}
+```
+
+通过 Helm 运行我们的模板并查看结果：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clunky-cat-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+  mug: true
+```
+
+小心使用 chomping 修饰符。这样很容易引起意外：
+
+```yml
+  food: {{ .Values.favorite.food | upper | quote }}
+  {{- if eq .Values.favorite.drink "coffee" -}}
+  mug: true
+  {{- end -}}
+```
+
+这会产生 `food: "PIZZA"mug:true`，因为删除了双方的换行符。
+
+最后，有时候告诉模板系统如何缩进更容易，而不是试图掌握模板指令的间距。因此，有时可能会发现使用 `indent` 函数（`{{indent 2 "mug:true"}}`）会很有用。
+
+### 使用 with 修改域
+
+`with` 控制着变量作用域。`.` 是对当前范围的引用。因此，`.Values` 告诉模板在当前范围中查找 `Values` 对象。
+
+`with` 语法类似一个简单的 `if` 片段：
+
+```yml
+{{ with PIPELINE }}
+  # restricted scope
+{{ end }}
+```
+
+scope 可以改变。`with` 可以允许将当前范围（`.`）设置为特定的对象。如，我们一直在使用的 `.Values.favorites`。让我们重写我们的 ConfigMap 来改变 `.` scope 来指向 `.Values.favorites`：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  {{- with .Values.favorite }}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  {{- end }}
+```
+
+注意，现在我们可以引用 `.drink` 和 `.food` 无需对其进行限定。这是因为该 `with` 声明设置 `.` 为指向 `.Values.favorite`。在 `{{- end }}` 后会重置 `.` 为先前的 scope。
+
+但是请注意！在受限范围内，此时将无法从父作用域访问其他对象。例如，下面会报错：
+
+```yml
+  {{- with .Values.favorite}}
+  drink: {{.drink | default "tea" | quote}}
+  food: {{.food | upper | quote}}
+  release: {{.Release.Name}}
+  {{- end}}
+```
+
+它会产生一个错误，因为 `Release.Name` 它不在 `.` 限制范围内。但是，如果我们交换最后两行，所有将按预期工作，因为范围在 `{{ end }}` 之后被重置。
+
+或者，我们可以使用 `$` 访问父作用域的 `Release.Name` 对象。`$` 被映射到根作用域，并且在模板执行过程中不会改变。以下也是可行的：
+
+```yml
+  {{- with .Values.favorite }}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  release: {{ $.Release.Name }}
+  {{- end }}
+```
+
+### 循环 range 动作
+
+许多编程语言都支持 `for` 循环，`foreach` 循环，或者类似的简单的机制。在 Helm 的模版语言中，遍历集合的方式是使用 `range` 操作符。
+
+首先，让我们在我们的 `values.yaml` 文件中添加一份披萨配料列表：
+
+```yml
+favorite:
+  drink: coffee
+  food: pizza
+pizzaToppings:
+  - mushrooms
+  - cheese
+  - peppers
+  - onions
+```
+
+现在我们有了一个列表 `pizzaToppings`（在模版中叫做 `slice`）。我们可以修改我们的模板，将这个列表打印到我们的 ConfigMap 中：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  {{- with .Values.favorite }}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  {{- end }}
+  toppings: |-
+    {{- range .Values.pizzaToppings }}
+    - {{ . | title | quote }}
+    {{- end }}
+```
+
+我们可以使用 `$` 访问父作用域的列表 `Values.pizzaToppings`。
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  {{- with .Values.favorite }}
+  drink: {{ .drink | default "tea" | quote }}
+  food: {{ .food | upper | quote }}
+  toppings: |-
+    {{- range $.Values.pizzaToppings }}
+    - {{ . | title | quote }}
+    {{- end }}
+  {{- end }}
+```
+
+让我们仔细看看 `toppings:` 列表。`range` 函数将 “range over”(遍历) `pizzaToppings` 列表。但现在发生了一些有趣的事情。就像 `with` 设置 `.` 的作用域，`range` 操作符也是一样。每次通过循环时，`.` 都设置为当前的 pizza topping。也就是第一次 `.` 为 `mushrooms`。第二个迭代它为 `cheese`，依此类推。
+
+我们可以直接向管道发送 `.` 的值，所以当我们这样做时 `{{ . | title | quote }}`，它会发送 `.` 到 `title`（标题 case 函数），然后发送到 `quote`。如果我们运行这个模板，输出将是：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgy-dragonfly-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+  toppings: |-
+    - "Mushrooms"
+    - "Cheese"
+    - "Peppers"
+    - "Onions"
+```
+
+现在，在这个例子中，我们碰到了一些棘手的事情。该 `toppings: |-` 行声明了一个多行字符串。所以我们的 toppings list 实际上不是 YAML 清单。这是一个很大的字符串。我们为什么要这样做？因为 ConfigMaps 中的数据 data 由键/值对组成，其中键和值都是简单的字符串。要理解这种情况，请查看 [Kubernetes ConfigMap 文档](https://kubernetes.io/docs/user-guide/configmap/)。但对我们来说，这个细节并不重要。
+
+> YAML 中的 `|-` 标记表示一个多行字符串。这可以是一种有用的技术，用于在清单中嵌入大块数据，如此处所示。
+
+有时这对于能快速在模板中创建一个列表，然后遍历该列表是很有用的。。Helm 模板有一个功能可以使这个变得简单：`tuple`。在计算机科学中，元组是固定大小但具有任意数据类型的类似列表的集合。这大致表达了使用元组的方式。
+
+```yml
+  sizes: |-
+    {{- range tuple "small" "medium" "large" }}
+    - {{ . }}
+    {{- end }}
+```
+
+上面会产生：
+
+```yml
+  sizes: |-
+    - small
+    - medium
+    - large
+```
+
+除了 list 和 tuple 之外，`range` 还可以用于遍历具有键和值的集合（如 `map` 或 `dict`）。
+
+## 变量

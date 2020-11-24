@@ -975,3 +975,395 @@ data:
 除了 list 和 tuple 之外，`range` 还可以用于遍历具有键和值的集合（如 `map` 或 `dict`）。
 
 ## 变量
+
+了解了函数，管道，对象和控制结构，我们可以开始了解许多编程语言中较为基本的思想之一：变量。在模版中，它的使用频率比较低。但是我们会看到如何使用它们简化代码，并更好地使用 `with` 和 `range`。
+
+在前面的例子中，我们看到这段代码会失败：
+
+```yml
+  {{- with .Values.favorite}}
+  drink: {{.drink | default "tea" | quote}}
+  food: {{.food | upper | quote}}
+  release: {{.Release.Name}}
+  {{- end}}
+```  
+
+`Release.Name` 不在该 `with` 块中限制的域内。解决作用域问题的一种方法是将对象分配给可以在不考虑当前范围的情况下访问的变量。
+
+在 Helm 模版中。一个变量是对另一个对象的命名引用。它遵循这个形式 `$name`。变量被赋予一个特殊的赋值操作符：`:=`。我们可以使用变量重写上面的 `Release.Name`。
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{.Release.Name}}-configmap
+data:
+  myvalue: "Hello World"
+  {{- $relname := .Release.Name -}}
+  {{- with .Values.favorite}}
+  drink: {{.drink | default "tea" | quote}}
+  food: {{.food | upper | quote}}
+  release: {{$relname}}
+  {{- end}}
+```
+
+注意，在我们开始 `with` 块之前，我们赋值 `$relname :=.Release.Name`。现在在 `with` 块内部，`$relname` 变量仍然指向 `.Release.Name`。
+
+运行会产生：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: viable-badger-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "PIZZA"
+  release: viable-badger
+```
+
+变量在 `range` 循环中特别有用。它们可以用于类似列表的对象来捕获索引和值：
+
+```yml
+  toppings: |-
+    {{- range $index, $topping := .Values.pizzaToppings}}
+      {{$index}}: {{ $topping }}
+    {{- end}}
+```
+
+注意，首先是 `range`，然后是变量，然后是赋值操作符，然后是列表。这会把整数索引赋值给 `$index`（从 0 开始），值赋值给 `$topping`。运行会生成：
+
+```yml
+  toppings: |-
+      0: mushrooms
+      1: cheese
+      2: peppers
+      3: onions
+```
+
+对于同时具有键值对的数据结构，可以使用 `range` 来获取两者。例如，我们可以对 `.Values.favorite` 像这样循环：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  myvalue: "Hello World"
+  {{- range $key, $val := .Values.favorite }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+```
+
+现在在第一次迭代中，`$key` 是 `drink`，`$val` 是 `coffee`，第二次，`$key` 是 `food`，`$val` 会 `pizza`。运行上面的代码会生成：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eager-rabbit-configmap
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "pizza"
+```
+
+变量通常不是 “全局” 的。它们的范围是声明它们所在的块。之前，我们在模板的顶层赋值 `$relname`。该变量将在整个模板的范围内起作用。但在我们的最后一个例子中，`$key` 和 `$val` 只会在该 `{{range...}}{{end}}` 块的范围内起作用。
+
+然后，`$` 变量永远是全局的，这个变量总是指向 root 上下文。当你在 `range` 循环需要知道 release name 时是非常有用的。
+
+示例：
+
+```yml
+{{- range .Values.tlsSecrets }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}
+  labels:
+    # Many helm templates would use `.` below, but that will not work,
+    # however `$` will work here
+    app.kubernetes.io/name: {{ template "fullname" $ }}
+    # I cannot reference .Chart.Name, but I can do $.Chart.Name
+    helm.sh/chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    app.kubernetes.io/instance: "{{ $.Release.Name }}"
+    # Value from appVersion in Chart.yaml
+    app.kubernetes.io/version: "{{ $.Chart.AppVersion }}"
+    app.kubernetes.io/managed-by: "{{ $.Release.Service }}"
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ .certificate }}
+  tls.key: {{ .key }}
+---
+{{- end }}
+```
+
+## 命名模版
+
+在本节中，将看到如何在一个文件中定义命名模板，然后在别处使用它们。命名模版（有时候叫做局部模版或子模版）只是在文件中定义，并给出名称。我们可以看到创建它们的两种方式，是一些使用它们的不同方式。
+
+在命名模板时要注意一个重要的细节：**模板名称是全局的**。如果声明两个具有相同名称的模板，那么会使用最后加载的那个。由于子 chart 中的模板与顶级模板一起编译，因此注意小心地使用特定 chart 的名称来命名模板。
+
+通用的命名约定是为每个定义的模板添加 chart 名称：`{{ define "mychart.labels" }}`。通过使用特定 chart 名称作为前缀，我们可以避免由于同名模板的两个不同 chart 而可能出现的任何冲突。
+
+### partials 和 _ 文件
+
+到目前为止，我们已经使用了一个文件，一个文件包含一个模板。但 Helm 的模板语言允许创建命名的嵌入模板，可以通过名称访问。
+
+在我们开始编写这些模板之前，有一些文件命名约定值得一提：
+
+- 大多数文件 `templates/` 被视为包含 Kubernetes manifests
+- `NOTES.txt` 是一个例外
+- 名称以下划线（`_`）开头的文件被认为内部没有 Kubernetes manifest。这些文件不会渲染 Kubernetes 对象定义，但是在其他 chart 模板中可以任意调用。
+
+这些文件用于存储 partials 和辅助程序。事实上，当我们第一次创建时 mychart，我们看到一个叫做文件 `_helpers.tpl`。该文件是模板 partials 的默认位置。
+
+### 用 define 和 template 声明和使用模板
+
+define 操作允许我们在模板文件内创建一个命名模板。它的语法如下所示：
+
+```yml
+{{ define "MY.NAME" }}
+  # body of template here
+{{ end }}
+```
+
+例如，我们可以定义一个封装 Kubernetes labels 块的模版：
+
+```yml
+{{- define "mychart.labels" }}
+  labels:
+    generator: helm
+    date: {{ now | htmlDate }}
+{{- end }}
+```
+
+现在我们可以在现有的的 ConfigMap 中嵌入这个模版，然后将其包含在 `template` 操作中：
+
+```yml
+{{- define "mychart.labels" }}
+  labels:
+    generator: helm
+    date: {{ now | htmlDate }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  {{- template "mychart.labels" }}
+data:
+  myvalue: "Hello World"
+  {{- range $key, $val := .Values.favorite }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+```
+
+当模板引擎读取该文件时，它将存储 `mychart.labels` 的引用直到 `template "mychart.labels"` 被调用。然后它将在文件内渲染该模板。所以结果如下所示：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: running-panda-configmap
+  labels:
+    generator: helm
+    date: 2016-11-02
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "pizza"
+```
+
+通常，Helm chart 通常将这些模板放入 partials 文件中，通常是 `_helpers.tpl`。让我们移动这个函数到那里：
+
+```yml
+{{/* Generate basic labels */}}
+{{- define "mychart.labels" }}
+  labels:
+    generator: helm
+    date: {{ now | htmlDate }}
+{{- end }}
+```
+
+按照惯例，`define` 函数应该有一个简单的文档块（`{{/* ... */}}`）来描述他们所做的事情。
+
+即使这个定义在 `_helpers.tpl`，它仍然可以在 `configmap.yaml` 中访问：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  {{- template "mychart.labels" }}
+data:
+  myvalue: "Hello World"
+  {{- range $key, $val := .Values.favorite }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+```
+
+如上所述，模板名称是全局的。因此，如果两个模板被命名为相同的名称，则最后出现的模版会被使用。由于子 chart 中的模板与顶级模板一起编译，因此最好使用 chart 专用名称命名模板。流行命名约定是为每个定义的模板添加 chart 名称：`{{ define "mychart.labels" }}`。
+
+### 设置模版的作用域
+
+在我们上面定义的模板中，我们没有使用任何对象。我们只是使用函数。让我们修改我们定义的模板，包含 chart 名称和 chart 版本：
+
+```yml
+{{/* Generate basic labels */}}
+{{- define "mychart.labels" }}
+  labels:
+    generator: helm
+    date: {{ now | htmlDate }}
+    chart: {{ .Chart.Name }}
+    version: {{ .Chart.Version }}
+{{- end }}
+```
+
+如果我们渲染这个，将不会得到我们期望的结果：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moldy-jaguar-configmap
+  labels:
+    generator: helm
+    date: 2016-11-02
+    chart:
+    version:
+```
+
+name 和 version 发生了什么？他们不在我们定义的模板的范围内。当一个已命名的模板（用 `define` 创建）被渲染时，它将接收由该 `template` 调用传入的作用域。在我们的例子中，我们包含了这样的模板：
+
+```yml
+{{- template "mychart.labels" }}
+```
+
+没有传入 scope，因此在模板中我们无法访问 `.` 中的任何内容。这很容易解决。我们只需将 scope 传递给模板：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  {{- template "mychart.labels" . }}
+```
+
+请注意，我们在调用 `template` 时末尾传递了 `.`。我们可以很容易地通过 `.Values` 或者 `.Values.favorite` 或者我们想要的任何 scope。但是我们想要的是顶级 scope。
+
+现在，当我们用 `helm install --dry-run --debug ./mychart` 执行这个模板，我们得到这个：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plinking-anaco-configmap
+  labels:
+    generator: helm
+    date: 2016-11-02
+    chart: mychart
+    version: 0.1.0
+```
+
+现在 `{{ .Chart.Name }}` 解析为 `mychart`，`{{ .Chart.Version }}` 解析为 `0.1.0`。
+
+### include 函数
+
+假设我们已经定义了一个如下所示的简单模板：
+
+```yml
+{{- define "mychart.app" -}}
+app_name: {{ .Chart.Name }}
+app_version: "{{ .Chart.Version }}"
+{{- end -}}
+```
+
+现在，假设我想把它插入到模板的 `label:` 部分和 `data:` 部分：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  labels:
+    {{ template "mychart.app" . }}
+data:
+  myvalue: "Hello World"
+  {{- range $key, $val := .Values.favorite }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{ template "mychart.app" . }}
+```
+
+输出并不是我们期望的：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: measly-whippet-configmap
+  labels:
+    app_name: mychart
+app_version: "0.1.0+1478129847"
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "pizza"
+  app_name: mychart
+app_version: "0.1.0+1478129847"
+```
+
+注意，`app_version` 缩进在两个地方都是错误的。为什么？因为被替换的模板具有与右侧对齐的文本。因为 `template` 是一个动作，而不是一个函数，所以没有办法将 `template` 调用的输出传递给其他函数; 数据只是内嵌在一行。
+
+为了解决这个问题，Helm 提供了一个替代 `template` 方案，将模板的内容导入到当前管道中，并将其传递到管道中的其函数。
+
+这里是上面的例子，用 `indent` 纠正正确缩进 `mychart_app` 模板：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  labels:
+{{ include "mychart.app" . | indent 4 }}
+data:
+  myvalue: "Hello World"
+  {{- range $key, $val := .Values.favorite }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{ include "mychart.app" . | indent 2 }}
+```
+
+现在生成的 YAML 每个部分都正确缩进：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edgy-mole-configmap
+  labels:
+    app_name: mychart
+    app_version: "0.1.0+1478129987"
+data:
+  myvalue: "Hello World"
+  drink: "coffee"
+  food: "pizza"
+  app_name: mychart
+  app_version: "0.1.0+1478129987"
+```
+
+在 Helm 模板中使用 `include` 比 `template` 会更好，可以更好地为 YAML 处理输出格式。
+
+## 在模版中访问 Files
+
+在上一节中，我们介绍了几种创建和访问命名模板的方法。这可以很容易地从另一个模板中导入一个模板。但有时需要导入不是模板的文件，并注入其内容而不通过模板渲染器发送内容。
+
+Helm 提供的 `.Files` 对象可以访问文件。

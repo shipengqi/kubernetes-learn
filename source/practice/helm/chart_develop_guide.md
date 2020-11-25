@@ -1366,4 +1366,232 @@ data:
 
 在上一节中，我们介绍了几种创建和访问命名模板的方法。这可以很容易地从另一个模板中导入一个模板。但有时需要导入不是模板的文件，并注入其内容而不通过模板渲染器发送内容。
 
-Helm 提供的 `.Files` 对象可以访问文件。
+Helm 提供的 `.Files` 对象可以访问文件。在我们开始使用模板示例之前，关于它是如何工作的，有几点需要注意:
+
+- 向 Helm chart 添加额外的文件是可以的。这些文件将被捆绑。不过要注意，由于 Kubernetes 对象的存储限制，chart 必须小于 1M。
+- 一些文件不能通过 `.Files` 对象访问，通常是出于安全原因。
+  - `templates/` 下的文件无法访问。
+  - 使用 `.helmignore` 排除的文件不能被访问。
+- chart 不保留 UNIX 模式信息，因此文件级权限在涉及 `.Files` 对象时不会影响文件的可用性。
+
+### 基础示例
+
+留意这些注意事项，我们编写一个模板，从三个文件读入我们的 ConfigMap。首先，我们将三个文件添加到 chart 中，将所有三个文件直接放在 `mychart/` 目录中。
+
+`config1.toml`：
+
+```toml
+message = Hello from config 1
+```
+
+`config2.toml`：
+
+```toml
+message = This is config 2
+```
+
+`config3.toml`：
+
+```toml
+message = Goodbye from config 3
+```
+
+这些都是简单的 TOML 文件（想想老派的 Windows INI 文件）。我们知道了这些文件的名称，所以可以使用一个 `range` 函数来遍历它们并将它们的内容注入到我们的 ConfigMap 中。
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  {{- $files := .Files }}
+  {{- range tuple "config1.toml" "config2.toml" "config3.toml" }}
+  {{ . }}: |-
+    {{ $files.Get . }}
+  {{- end }}
+```
+
+这个配置映射使用了前几节讨论的几种技术。例如，我们创建一个 `$files` 变量来保存 `.Files` 对象的引用。我们还使用该 `tuple` 函数来创建我们循环访问的文件列表。然后我们打印每个文件名（`{{ . }}: |-`），然后打印文件的内容 `{{ $files.Get . }}`。
+
+运行这个模板将产生一个包含所有三个文件内容的 ConfigMap：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quieting-giraf-configmap
+data:
+  config1.toml: |-
+    message = Hello from config 1
+
+  config2.toml: |-
+    message = This is config 2
+
+  config3.toml: |-
+    message = Goodbye from config 3
+```
+
+### Path helpers
+
+在处理文件时，对文件路径本身执行一些标准操作会非常有用。为了协助这个能力，Helm 从 Go 的 `path` 包中导入了许多函数供使用。它们都可以使用 Go 包中的相同名称访问，但使用时小写第一个字母，例如，`Base` 变成 `base`，等等
+
+导入的功能是：
+
+- Base
+- Dir
+- Ext
+- IsAbs
+- Clean
+
+### Glob 模式
+
+随着 chart 的增长，可能会发现需要组织更多地文件，因此我们提供了一种 `Files.Glob(pattern string)` 方法通过具有灵活性的模式 glob patterns 协助提取文件。
+
+`.Glob` 返回一个 `Files` 类型，所以可以调用 `Files` 返回对象的任何方法。
+
+例如，目录结构：
+
+```bash
+foo/:
+  foo.txt foo.yaml
+
+bar/:
+  bar.go bar.conf baz.yaml
+```
+
+`Globs` 有多个选项：
+
+```yml
+{{ $currentScope := .}}
+{{ range $path, $_ :=  .Files.Glob  "**.yaml" }}
+    {{- with $currentScope}}
+        {{ .Files.Get $path }}
+    {{- end }}
+{{ end }}
+```
+
+或者：
+
+```yml
+{{ range $path, $_ :=  .Files.Glob  "**.yaml" }}
+      {{ $.Files.Get $path }}
+{{ end }}
+```
+
+### ConfigMap 和 Secrets 工具函数
+
+（大于等于 2.0.2 的版本）
+
+将文件内容放置到 configmap 和 secret 中是很常见的，可以方便在运行时挂载到 pod 中。为了解决这个问题，我们在这个 `Files` 类型上提供了一些实用的方法。
+
+为了进一步组织文件，将这些方法与 `Glob` 方法结合使用尤其有用。
+
+根据上面的 Glob 示例中的目录结构：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conf
+data:
+{{ (.Files.Glob "foo/*").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: very-secret
+type: Opaque
+data:
+{{ (.Files.Glob "bar/*").AsSecrets | indent 2 }}
+```
+
+### 编码
+
+我们可以导入一个文件，并使用 base64 对模板进行编码以确保成功传输：
+
+```yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-secret
+type: Opaque
+data:
+  token: |-
+    {{ .Files.Get "config1.toml" | b64enc }}
+```
+
+以上例子将采用之前用过的 `config1.toml` 文件并对其进行编码：
+
+```yml
+# Source: mychart/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lucky-turkey-secret
+type: Opaque
+data:
+  token: |-
+    bWVzc2FnZSA9IEhlbGxvIGZyb20gY29uZmlnIDEK
+```
+
+### 行
+
+有时需要访问模板中文件的每一行。为此提供了一种方便的方法 `Lines`。
+
+可以使用 `range` 函数遍历 `Lines`：
+
+```yml
+data:
+  some-file.txt: {{ range .Files.Lines "foo/bar.txt" }}
+    {{ . }}{{ end }}
+```
+
+目前，无法在 `helm install` 期间将外部文件传递给 chart。因此，如果要求用户提供数据，则必须使用 `helm install -f` 或进行加载 `helm install --set`。
+
+## 创建 NOTES.txt 文件
+
+在本节中，我们将看看 Helm 工具如何向你的 chart 用户提供说明。在 `helm install` 或 `helm upgrade` 结束时，Helm 可以为用户打印出一块有用的信息。这些信息是使用模板高度定制的。
+
+要将安装说明添加到 chart，只需创建一个 `templates/NOTES.txt` 文件即可。这个文件是纯文本的，但是它像一个模板一样处理，并且具有所有可用的普通模板函数和对象。
+
+我们来创建一个简单的 `NOTES.txt` 文件：
+
+```yml
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get {{ .Release.Name }}
+```
+
+现在如果我们运行 `helm install rude-cardinal ./mychart`，我们会在底部看到这个消息：
+
+```bash
+RESOURCES:
+==> v1/Secret
+NAME                   TYPE      DATA      AGE
+rude-cardinal-secret   Opaque    1         0s
+
+==> v1/ConfigMap
+NAME                      DATA      AGE
+rude-cardinal-configmap   3         0s
+
+
+NOTES:
+Thank you for installing mychart.
+
+Your release is named rude-cardinal.
+
+To learn more about the release, try:
+
+  $ helm status rude-cardinal
+  $ helm get all rude-cardinal
+```
+
+使用 `NOTES.txt` 是为用户提供有关如何使用新安装 chart 的详细信息一种很好的方式。强烈建议创建一个文件 `NOTES.txt`，尽管这不是必需的。
+
+### 子 chart 和全局值

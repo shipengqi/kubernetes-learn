@@ -1594,4 +1594,274 @@ To learn more about the release, try:
 
 使用 `NOTES.txt` 是为用户提供有关如何使用新安装 chart 的详细信息一种很好的方式。强烈建议创建一个文件 `NOTES.txt`，尽管这不是必需的。
 
-### 子 chart 和全局值
+## 子 chart 和全局值
+
+到目前为止，我们只使用了一个 chart。但是 chart 可以有依赖，叫做**子 chart**，子 chart 有自己的 values 和模版。在本节我们会创建一个子 chart，并且看到访问模版中的值的不同方式。
+
+在我们深入了解代码之前，需要了解一些有关子 chart 的重要细节：
+
+1. 一个子 chart 被认为是独立的，意味着子 chart 不能明确依赖父 chart。
+2. 因此，子 chart 无法访问父 chart 的值。
+3. 父 chart 可以覆盖子 chart 的值。
+4. Helm 有一个全局值的概念，可以被所有 chart 访问。
+
+### 创建一个子 chart
+
+对于这些练习，我们将从本指南开始时创建的 chart `mychart/` 开始，并在其中添加一个新 chart。
+
+```bash
+$ cd mychart/charts
+$ helm create mysubchart
+Creating mysubchart
+$ rm -rf mysubchart/templates/*.*
+```
+
+注意，和以前一样，我们删除了所有的基本模板，以便我们可以从头开始。在本指南中，我们专注于模板如何工作，而不是管理依赖关系。但 [chart 指南](https://helm.sh/docs/topics/charts/)有更多关于子 chart 是如何工作的。
+
+### 添加值和模版到子 chart
+
+下来，我们为 `mysubchart` chart 创建一个简单的模板和 values 文件。应该已经有一个 `values.yaml` 在文件夹 `mychart/charts/mysubchart` 中了。我们将这样设置：
+
+```yml
+dessert: cake
+```
+
+接下来，我们将在下面创建一个新的 ConfigMap 模板 `mychart/charts/mysubchart/templates/configmap.yaml`：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cfgmap2
+data:
+  dessert: {{ .Values.dessert }}
+```
+
+由于每个子 chart 都是独立的 chart，因此我们可以给 `mysubchart` 单独测试：
+
+```bash
+$ helm install --generate-name --dry-run --debug mychart/charts/mysubchart
+SERVER: "localhost:44134"
+CHART PATH: /Users/mattbutcher/Code/Go/src/helm.sh/helm/_scratch/mychart/charts/mysubchart
+NAME:   newbie-elk
+TARGET NAMESPACE:   default
+CHART:  mysubchart 0.1.0
+MANIFEST:
+---
+# Source: mysubchart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: newbie-elk-cfgmap2
+data:
+  dessert: cake
+```
+
+### 覆盖子 chart 的值
+
+我们原来的 chart，`mychart` 现在是 `mysubchart` 的父 chart,。这种关系完全是因为 mysubchart 在 `mychart/charts` 目录中。
+
+由于 `mychart` 是父级，我们可以指定 `mychart` 的配合并将配置推入 `mysubchart`。例如，我们可以修改 `mychart/values.yaml`：
+
+```yml
+favorite:
+  drink: coffee
+  food: pizza
+pizzaToppings:
+  - mushrooms
+  - cheese
+  - peppers
+  - onions
+
+mysubchart:
+  dessert: ice cream
+```
+
+请注意最后两行，`mysubchart` 部分内的任何指令都将发送到 `mysubchart` chart。所以如果我们运行 `helm install --dry-run --debug mychart`，我们将看到的一个是 `mysubchart` ConfigMap：
+
+```yml
+# Source: mychart/charts/mysubchart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unhinged-bee-cfgmap2
+data:
+  dessert: ice cream
+```
+
+顶层的值现在已经覆盖了子 chart 的值。这里有一个重要的细节需要注意。我们没有改变 `mychart/charts/mysubchart/templates/configmap.yaml` 模板指向 `.Values.mysubchart.dessert`。从该模板的角度来看，该值仍位于 `.Values.dessert`。随着模板引擎一起传递值，它会设置 scope。所以对于 `mysubchart` 模板，只有指定给 `mysubchart` 的值才会在 `.Values` 里。
+
+但有时候，确实希望某些值可用于所有模板。这是使用全局 chart 值完成的。
+
+### 全局 chart 值
+
+全局值是可以从任何 chart 或子 chart 用完全相同的名称访问的值。全局值需要明确声明。不能像使用现有的非全局值一样来使用全局值。
+
+values 数据类型有一个保留部分，称为 `Values.global`, 可以设置全局值。让我们在 `mychart/values.yaml` 文件中设置一个：
+
+```yml
+favorite:
+  drink: coffee
+  food: pizza
+pizzaToppings:
+  - mushrooms
+  - cheese
+  - peppers
+  - onions
+
+mysubchart:
+  dessert: ice cream
+
+global:
+  salad: caesar
+```
+
+因为这样全局值的使用方法，`mychart/templates/configmap.yaml` 和 `mychart/charts/mysubchart/templates/configmap.yaml` 都能够访问该值 `{{ .Values.global.salad }}`。
+
+`mychart/templates/configmap.yaml`：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+data:
+  salad: {{ .Values.global.salad }}
+```
+
+`mysubchart/templates/configmap.yaml`：
+
+```yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cfgmap2
+data:
+  dessert: {{ .Values.dessert }}
+  salad: {{ .Values.global.salad }}
+```
+
+现在，如果我们运行 dry run，我们会在两个输出中看到相同的值：
+
+```yml
+# Source: mychart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: silly-snake-configmap
+data:
+  salad: caesar
+
+---
+# Source: mychart/charts/mysubchart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: silly-snake-cfgmap2
+data:
+  dessert: ice cream
+  salad: caesar
+```
+
+全局变量对于传递这样的信息非常有用，但它确实需要一些计划来确保使用全局变量配置正确的模板。
+
+### 与子 chart 共享模板
+
+父 chart 和子 chart 可以共享模板。任何 chart 中的任何定义块都可用于其他 chart。
+
+例如，我们可以像这样定义一个简单的模板：
+
+```yml
+{{- define "labels" }}from: mychart{{ end }}
+```
+
+回想一下模板上的标签是如何全局共享的。因此，`labels` chart 可以包含在其他 chart 中。
+
+尽管 chart 开发人员可以选择 `include` 和 `template`, 使用 `include` 的一个优点是，`include` 可以动态地引用模板：
+
+```yml
+{{ include $mytemplate }}
+```
+
+以上例子不会引用 `$mytemplate`。`template` 相反，将只接受一个字符串。
+
+### 避免使用块
+
+Go 模板语言提供了一个 block 关键字，允许开发人员提供一个默认的实现，后续将被覆盖。在 Helm chart 中，块不是重写的最佳工具，因为如果提供了同一个块的多个实现，那么所选哪个是不可预知的。
+
+建议是改为使用 `include`。
+
+## .helmignore 文件
+
+`.helmignore` 文件用于指定不想包含在 helm chart 中的文件。
+
+如果该文件存在，`helm package` 命令在打包应用程序时忽略在 `.helmignore` 文件中指定的模式匹配到的所有文件。
+
+这有助于避免在 helm chart 中添加不需要或敏感的文件或目录。
+
+`.helmignore` 文件支持 Unix shell glob 匹配，相对路径匹配和否定（以 `!` 为前缀）。每一行被认为是一种模式。
+
+这是一个 `.helmignore` 文件示例：
+
+```bash
+# comment
+
+# Match any file or path named .git
+.git
+
+# Match any text file
+*.txt
+
+# Match only directories named mydir
+mydir/
+
+# Match only text files in the top-level directory
+/*.txt
+
+# Match only the file foo.txt in the top-level directory
+/foo.txt
+
+# Match any file named ab.txt, ac.txt, or ad.txt
+a[b-d].txt
+
+# Match any file under subdir matching temp*
+*/temp*
+
+*/*/temp*
+temp?
+```
+
+与 `.gitignore` 的一些明显的区别：
+
+- 不支持 `**` 语法
+- globbing 库是 Go 的 `filepath.Match`，而不是 `fnmatch(3)`
+- 尾部空格会被忽略 （不支持转义序列）
+- 不支持 `!` 作为一个特殊的前导序列。
+
+## 调试模版
+
+调试模板可能很棘手，因为呈现的模板被发送到 Kubernetes API 服务器，该服务器可能会因为格式化以外的原因拒绝 YAML 文件。
+
+有几个命令可以帮助进行调试。
+
+- `helm lint` 是验证 chart 是否遵循最佳实践的首选工具
+- `helm install --dry-run --debug` or `helm template --debug`: 这是让服务器渲染你的模板，然后返回结果清单文件的好方法。
+- `helm get manifest`:这是查看服务器上已经安装的模板的好方法。
+
+当你的 YAML 解析失败，但想看看生成了什么时，检索 YAML 的一个简单方法是注释模板中的问题部分，然后重新运行 `helm install --dry-run --debug`：
+
+```yml
+apiVersion: v2
+# some: problem section
+# {{ .Values.foo | quote }}
+```
+
+以上内容将被完整渲染并返回。
+
+```yml
+apiVersion: v2
+# some: problem section
+#  "bar"
+```
+
+这提供了一种快速查看生成的容的方式，而不会由于 YAML 分析错误而被阻止。

@@ -840,3 +840,40 @@ Starter 就只是普通 chart，但是被放在 `$XDG_DATA_HOME/helm/starters`�
 - 所有出现的 `<CHARTNAME>` 都会被替换为指定为 chart 名称，以便 chart 可以作为模板使用。
 
 当前在 `$XDG_DATA_HOME/helm/starters` 目录中增加一个 chart 的唯一方式就是手动拷贝一个 chart 到这个目录。在 chart 文档中，可能需要解释这个过程。
+
+## Hooks
+
+Helm 提供了 Hook 机制，chart 开发者可以在 release 的生命周期中的某些点进行干预。例如，可以使用 hooks：
+
+- 在安装时，在任何其他 chart 加载前，加载 ConfigMao 或者 Secret。
+- 在安装一个新 chart 之前执行一个备份数据库的 job，然后在升级好后执行第二个 job 恢复数据。
+- 在删除 release 之前，运行一个 job ，在删除 release 之前优雅的停止服务。
+
+Hooks 像常规模板一样工作，但它们具有特殊的注释，可以使 Helm 以不同的方式使用它们。在本节中，我们介绍 Hooks 的基本使用模式。
+
+### 可用的 Hooks
+
+定义的 hooks：
+
+- `pre-install` 在模板渲染后执行，但在 Kubernetes 中创建任何资源之前执行
+- `post-install` 在所有资源加载到 Kubernetes 后执行
+- `pre-delete` 在从 Kubernetes 删除任何资源之前执行
+- `post-delete` 删除所有 release 的资源后执行
+- `pre-upgrade` 在模板渲染后执行，但在 Kubernetes 中更新任何资源之前执行
+- `post-upgrade` 在所有资源升级后执行
+- `pre-rollback` 在模板渲染后执行，但在 Kubernetes 中任何资源回滚之前执行
+- `post-rollback` 在 Kubernetes 中任何资源回滚之后执行
+- `test` 在调用 Helm test 子命令时执行
+
+### Hooks 和 release 生命周期
+
+Hooks 让 chart 开发人员有机会在 release 的生命周期中的关键点执行操作。例如，`helm install` 的生命周期。默认情况下，生命周期如下所示：
+
+1. 用户运行 `helm install foo`
+2. 调用 Helm 安装 API
+3. 一些校验之后, helm 渲染 `foo` 模板
+4. helm 将产生的资源加载到 Kubernetes
+5. 将 release 名称（和其他数据）返回给客户端
+6. 客户端退出
+
+Helm 为 `install` 生命周期定义了两个 hook：`pre-install` 和 `post-install`。

@@ -876,4 +876,110 @@ Hooks 让 chart 开发人员有机会在 release 的生命周期中的关键点�
 5. 将 release 名称（和其他数据）返回给客户端
 6. 客户端退出
 
-Helm 为 `install` 生命周期定义了两个 hook：`pre-install` 和 `post-install`。
+Helm 为 `install` 生命周期定义了两个 hook：`pre-install` 和 `post-install`。如果 `foo` chart 的开发者实现了两个 hook，那么生命周期就像这样改变：
+
+1. 用户运行 `helm install foo`
+2. 调用 Helm 安装 API
+3. 安装 `crds/` 目录下的 CRDs
+4. 一些校验之后, helm 渲染 `foo` 模板
+5. 准备执行 `pre-install` hook（将 hook 资源加载到 Kubernetes 中）
+6. 按照权重（默认情况下分配的权重为 0）、资源种类以及最后按照名称对钩子进行升序排序。
+7. 然后，库会先加载权重最低的钩子（从负到正）。
+8. 等待，直到 hook "Ready" (CRD 除外)
+9. 将产生的资源加载到 Kubernetes 中。请注意，如果设置 `--wait` 标志，会等待，直到所有资源都处于就绪状态，并且在准备就绪之前不会运行 `post-install` hook。
+10. 执行 `post-install` hook（加载 hook 资源）
+11. 等待，直到 hook "Ready"
+12. 将 release 对象返回给客户端
+13. 客户端退出
+
+等待直到 hook "Ready" 是什么意思？这取决于在 hook 中声明的资源。如果资源是 Job 者 Pod，Helm 将等到 它成功完成。如果 hook 失败，则 release 失败。这是一个阻塞操作，所以 Helm 客户端会在 Job 运行时暂停。
+
+对于其他类型，只要 Kubernetes 将资源标记为 loaded（added 或者 updated），资源就被视为 "Ready"。当一个 hook 声明了很多资源时，这些资源将被串行执行。如果他们有 hook 权重（见下文），他们按照加权顺序执行。从 Helm 3.2.0 开始，相同权重的 hook 资源的安装顺序与普通非钩子资源相同。否则不能保证顺序。（在 Helm 2.3.0 及以后的版本中，它们是按字母顺序排列的。但这种行为并不具有约束力，将来可能会改变）。添加 hook 的权重被认为是一种好的做法，如果权重并不重要，则将其设置为 0。
+
+### Hook 资源不与相应的 release 一起进行管理
+
+hook 创建的资源目前不作为 release 的一部分进行跟踪或管理。一旦 Helm 验证了 hook 已经达到了它的就绪状态，就会把 hook 资源放到一边。未来可能会在 Helm 3 中在删除相应 release 时对 hook 资源的垃圾收集，所以绝对不能删除的 hook 资源都应该添加 `helm.sh/resource-policy: keep` annotation。
+
+实际上，这意味着如果在 hook 中创建资源，则不能依赖于 `helm uninstall` 删除资源。要销毁这些资源，需要在 hook 模版中添加一个自定义 annotation "helm.sh/hook-delete-policy"。或者设置 [Job 资源的生存时间（TTL）字段](https://kubernetes.io/docs/concepts/workloads/controllers/ttlafterfinished/)。
+
+### 写一个 hook
+
+Hook 只是 Kubernetes manifest 文件中的 metadata 部分的特殊注释。因为他们是模板文件，可以使用所有的 Normal 模板的功能，包括读取 `.Values`，`.Release` 和 `.Template`。
+
+例如，在此模板中, 存储在 `templates/post-install-job.yaml`，声明了要在 `post-install` 阶段运行任务：
+
+```yml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}"
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # This is what defines this resource as a hook. Without this line, the
+    # job is considered part of the release.
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: post-install-job
+        image: "alpine:3.3"
+        command: ["/bin/sleep","{{ default "10" .Values.sleepyTime }}"]
+```
+
+注释使这个模板成为 hook：
+
+```yml
+  annotations:
+    "helm.sh/hook": post-install
+```
+
+一个资源可以实现多个 hook：
+
+```yml
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+```
+
+同样，实现一个给定的 hook 的不同种类资源数量没有限制。例如，我们可以将 secret 和 config map 声明为 `pre-install` hook。
+
+子 chart 声明 hook 时，也会评估这些 hook。顶级 chart 无法禁用子 chart 所声明的 hook。
+
+可以为一个 hook 定义一个权重，这将有助于建立一个确定性的执行顺序。权重使用以下注释来定义：
+
+```yml
+annotations:
+  "helm.sh/hook-weight": "5"
+```
+
+hook 权重可以是正数或负数，但必须表示为字符串。当 Helm 开始执行某个特定种类的 hook 的周期时，它将按升序对这些 hook 进行排序。
+
+### Hook 删除策略
+
+可以定义策略来决定何时删除相应的 hook 资源。hook 删除策略使用以下 annotation 定义:
+
+```yml
+annotations:
+  "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+```
+
+可以选择一个或多个定义的 annotation 值：
+
+- `before-hook-creation` 在启动新 hook 之前删除之前的资源（默认）。
+- `hook-succeeded` 在 hook 成功执行后删除资源
+- `hook-failed` 如果 hook 在执行期间失败，删除资源
+
+如果没有指定 hook 删除策略 annotation，则默认应用 `before-hook-creation`。

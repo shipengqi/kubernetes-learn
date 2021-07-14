@@ -5,7 +5,7 @@ title: kube-controller-manager
 Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 组成，是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，
 ，发现故障自动修复，确保集群处于预期的工作状态。
 
-<img src="../imgs/controller-manager.png" width="70%">
+<img src="/static/images/controller-manager.png" width="70%">
 
 `kube-controller-manager` 由一系列的控制器组成：
 

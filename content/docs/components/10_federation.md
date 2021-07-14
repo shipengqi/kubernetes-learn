@@ -14,7 +14,7 @@ title: Federation
 所有的设计都尽量不影响 K8s Cluster 现有的工作机制，这样对于每个子 K8s 集群来说，并不需要更外层的有一个 K8s Federation，也就是意
 味着所有现有的 K8s 代码和机制不需要因为 Federation 功能有任何变化。
 
-<img src="../imgs/federation-api.png" width="70%">
+<img src="/static/images/federation-api.png" width="70%">
 
 Federation 主要包括三个组件：
 

@@ -117,4 +117,4 @@ spec:
 
 ## 工作原理
 
-<img src="../imgs/kube-apiserver.png" width="70%">
+<img src="/static/images/kube-apiserver.png" width="70%">

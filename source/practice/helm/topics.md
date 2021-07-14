@@ -20,7 +20,7 @@ chart 被组织为一个目录内的文件集合。目录名称是 chart 的名�
 wordpress/
   Chart.yaml          # A YAML file containing information about the chart
   LICENSE             # OPTIONAL: A plain text file containing the license for the chart
-  README.md           # OPTIONAL: A human-readable README file
+  01_components.md           # OPTIONAL: A human-readable README file
   values.yaml         # The default configuration values for this chart
   values.schema.json  # OPTIONAL: A JSON Schema for imposing a structure on the values.yaml file
   charts/             # A directory containing any charts upon which this chart depends.

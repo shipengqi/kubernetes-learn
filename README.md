@@ -1,17 +1,20 @@
-# Kubernetes 学习笔记
+# kubernetes-learn
 
-- GitHub 地址：<https://github.com/shipengqi/kubernetes-learn>
-- 在线浏览：<https://www.shipengqi.top/kubernetes-learn>
+Kubernetes learning ...
 
 ## Usage
 
+development:
+
 ```sh
-# install dependencies
-yarn
+# git clone  https://github.com/alex-shpak/hugo-book themes/book
+git submodule add https://github.com/alex-shpak/hugo-book themes/book
 
-# start dev server, access http://localhost:8082/kubernetes-learn
-yarn start
+hugo server --minify --theme book
+```
 
-# deploy
-yarn deploy
+deploy:
+
+```sh
+./deploy.sh
 ```

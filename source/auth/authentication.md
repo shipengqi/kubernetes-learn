@@ -105,7 +105,7 @@ OpenID 提供了 OAuth2 的认证机制，是很多云服务商（如 GCE、Azur
 `--oidc-groups-claim`，如 groups
 `--oidc-ca-file`，如 `/etc/kubernetes/ssl/kc-ca.pem`
 
-![](../imgs/oidc.png)
+![](../../static/images/oidc.png)
 
 参考[这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication/index.html)和
 [这里](https://www.ibm.com/developerworks/cn/cloud/library/cl-lo-openid-connect-kubernetes-authentication2/index.html)

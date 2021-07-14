@@ -283,7 +283,7 @@ $ kubectl create -f nginx-external-policy.yaml
 kubectl run web --image=nginx --labels app=web,env=prod --expose --port 80
 ```
 
-<img src="../imgs/network_policy_access_deny.jpg" width="70%">
+<img src="../../static/images/network_policy_access_deny.jpg" width="70%">
 
 网络策略：
 ```yml
@@ -303,7 +303,7 @@ spec:
 kubectl run apiserver --image=nginx --labels app=bookstore,role=api --expose --port 80
 ```
 
-<img src="../imgs/network_policy_access_pod.jpg" width="70%">
+<img src="../../static/images/network_policy_access_pod.jpg" width="70%">
 
 网络策略：
 ```yml
@@ -325,7 +325,7 @@ spec:
 
 ### 禁止 namespace 中所有 Pod 之间的相互访问
 
-<img src="../imgs/network_policy_pod_access_deny.gif" width="70%">
+<img src="../../static/images/network_policy_pod_access_deny.gif" width="70%">
 
 网络策略：
 ```yml
@@ -344,7 +344,7 @@ kubectl create namespace secondary
 kubectl run web --namespace secondary --image=nginx --labels=app=web --expose --port 80
 ```
 
-<img src="../imgs/network_policy_ns_access_deny.gif" width="70%">
+<img src="../../static/images/network_policy_ns_access_deny.gif" width="70%">
 
 网络策略：
 ```yml
@@ -366,7 +366,7 @@ spec:
 kubectl run web --image=nginx --labels=app=web --expose --port 80
 ```
 
-<img src="../imgs/network_policy_access_ns.gif" width="70%">
+<img src="../../static/images/network_policy_access_ns.gif" width="70%">
 
 网络策略：
 ```yml
@@ -391,7 +391,7 @@ kubectl run web --image=nginx --labels=app=web --port 80
 kubectl expose deployment/web --type=LoadBalancer
 ```
 
-<img src="../imgs/network_policy_access_external.gif" width="70%">
+<img src="../../static/images/network_policy_access_external.gif" width="70%">
 
 网络策略：
 ```yml

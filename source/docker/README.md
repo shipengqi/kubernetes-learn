@@ -412,7 +412,7 @@ $ cat /sys/fs/aufs/si_972c6d361e6b32ba/br[0-9]*
 我们可以看到，镜像的层都放置在 `/var/lib/docker/aufs/diff` 目录下，然后被联合挂载在 `/var/lib/docker/aufs/mnt` 里面。而且，
 从这个结构可以看出来，这个容器的 rootfs 由如下图所示的三部分组成：
 
-![](../imgs/layer.jpg)
+![](../../static/images/layer.jpg)
 
 第一部分，**只读层**。
 

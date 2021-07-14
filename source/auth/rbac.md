@@ -57,7 +57,7 @@ rules:
 `RoleBinding` 把 `Role` 或`ClusterRole` 中定义的各种权限映射到 `User`，`Service Account` 或者 `Group`，从而让这些用户继承角色在 `namespace` 中的权限。
 `ClusterRoleBinding` 让用户继承 `ClusterRole` 在整个集群中的权限。
 
-![rbac](../imgs/rbac2.png)
+![rbac](../../static/images/rbac2.png)
 
 `RoleBinding` 可以引用在同一命名空间内定义的 `Role` 对象。
 

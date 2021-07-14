@@ -105,7 +105,7 @@ Kubelet 定期（`housekeeping-interval`）检查系统的资源是否达到了�
 Container Runtime Interface（CRI）是 Kubernetes v1.5 引入的容器运行时接口，它将 Kubelet 与容器运行时解耦，将原来完全面向 Pod 级别的内
 部接口拆分成面向 Sandbox 和 Container 的 gRPC 接口，并将镜像管理和容器管理分离到不同的服务。
 
-<img src="../imgs/cri.png" width="70%">
+<img src="/static/images/cri.png" width="70%">
 
 CRI 基于 gRPC 定义了 `RuntimeService` 和 `ImageService` 等两个 gRPC 服务，分别用于容器运行时和镜像的管理。
 
@@ -240,11 +240,11 @@ CNCF 里的 containerd 项目，就可以提供一个典型的 CRI shim 的能�
 
 而kubelet 的另一个重要功能，则是调用网络插件和存储插件为容器配置网络和持久化存储。这两个插件与 kubelet 进行交互的接口，分别是 CNI（Container Networking Interface）和 CSI（Container Storage Interface）。
 
-<img src="../imgs/kubelet_arch.png" width="70%">
+<img src="/static/images/kubelet_arch.png" width="70%">
 
 ### Pod 启动流程
 
-<img src="../imgs/pod-start.png" width="70%">
+<img src="/static/images/pod-start.png" width="70%">
 
 ### CRI
 

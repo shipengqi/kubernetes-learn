@@ -265,7 +265,7 @@ Kubernetes 调度器实现抢占算法的一个最重要的设计，就是在调
 
 ### Pod 启动流程
 
-<img src="../imgs/pod-start.png" width="70%">
+<img src="/static/images/pod-start.png" width="70%">
 
 Kubernetes 的调度器的核心，实际上就是两个相互独立的控制循环。
 

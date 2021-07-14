@@ -1,2 +1,2 @@
-# kubernetes-learn
+# kubernetes
 Kubernetes learning.

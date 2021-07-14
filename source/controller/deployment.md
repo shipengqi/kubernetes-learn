@@ -10,7 +10,7 @@ Deployment 为 Pod 和 ReplicaSet 提供了一个声明式定义 (declarative) �
 
 Deployment，与 ReplicaSet，以及 Pod 的关系：
 
-![deploy-repalicas-pod](../imgs/deploy-repalicas-pod.png)
+![deploy-repalicas-pod](../../static/images/deploy-repalicas-pod.png)
 
 Deployment，与它的 ReplicaSet，以及 Pod 的关系，实际上是一种“层层控制”的关系。
 

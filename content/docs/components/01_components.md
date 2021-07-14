@@ -34,8 +34,8 @@ Kubernetes 主要由以下几个核心组件组成：
 
 典型的创建 Pod 的流程为：
 
-![create-pod-workflow](../imgs/create-pod-workflow.png)
+![create-pod-workflow](/static/images/create-pod-workflow.png)
 
 ## 端口号
 
-![components-ports](../imgs/components-ports.png)
+![components-ports](/static/images/components-ports.png)

@@ -1,8 +1,16 @@
-db.json
-node_modules
-public
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-themes/doc
+# Test binary, built with `go test -c`
+*.test
 
-.deploy_git
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 .idea
+# Dependency directories (remove the comment below to include it)
+# vendor/
+public

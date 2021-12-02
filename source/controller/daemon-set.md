@@ -41,7 +41,7 @@ spec:
       {HOST_ALIASES}
       nodeSelector:
         {NODESELECT}
-      serviceAccountName: cdf-view
+      serviceAccountName: keel-view
       priorityClassName: system-cluster-critical
       volumes:
       - name: config-volume

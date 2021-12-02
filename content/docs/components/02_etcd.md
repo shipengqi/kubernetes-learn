@@ -160,7 +160,7 @@ spec:
       path: {K8S_HOME}/ssl
     name: etcd-certs
   - hostPath:
-      path: {RUNTIME_CDFDATA_HOME}/etcd
+      path: {RUNTIME_DATA_HOME}/etcd
       type: DirectoryOrCreate
     name: etcd-data
 ```

@@ -72,26 +72,26 @@ data:
 
 ```yml
 ---
-#create cdf view service account
+#create keel view service account
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: cdf-view
+  name: keel-view
   namespace: kube-system
 ---
-#create rolebinding for cdf view service account in kube-system namespace
+#create rolebinding for keel view service account in kube-system namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:dns
+  name: keel:dns
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
 - kind: ServiceAccount
-  name: cdf-view
+  name: keel-view
   namespace: kube-system
 ---
 apiVersion: v1
@@ -141,7 +141,7 @@ spec:
       {HOST_ALIASES}
       nodeSelector:
         {NODESELECT}
-      serviceAccountName: cdf-view
+      serviceAccountName: keel-view
       priorityClassName: system-cluster-critical
       volumes:
       - name: config-volume

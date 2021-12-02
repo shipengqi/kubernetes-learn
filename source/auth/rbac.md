@@ -392,14 +392,14 @@ RBAC 现在被 Kubernetes 深度集成， API Server 会创建一组默认的 `C
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf-deployer:cluster-admin
+  name: keel-deployer:cluster-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: cdf-deployer
+  name: keel-deployer
   namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -418,14 +418,14 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:view
+  name: keel:view
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
 - kind: ServiceAccount
-  name: cdf-view
+  name: keel-view
   namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -442,7 +442,7 @@ subjects:
   namespace: kube-system
 ```
 
-上面的例子，`core` 命名空间下名为 `cdf-deployer` 的 ServiceAccount 被绑定到了默认的 `ClusterRole` `cluster-admin` 上。
+上面的例子，`core` 命名空间下名为 `keel-deployer` 的 ServiceAccount 被绑定到了默认的 `ClusterRole` `cluster-admin` 上。
 `kube-system` 命名空间下名为 `heapster-apiserver` 的 ServiceAccount 被绑定到了默认的 `ClusterRole` `system:heapster` 上。
 
 面向用户的角色：
@@ -467,11 +467,11 @@ kubectl create clusterrolebinding permissive-binding \
 ## 示例
 
 ```yml
-#create cdf deployer service account
+#create keel deployer service account
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: cdf-deployer
+  name: keel-deployer
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 #create suite installer service account
@@ -482,12 +482,12 @@ metadata:
   name: suite-installer
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
-#create cdf view service account
+#create keel view service account
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: cdf-view
+  name: keel-view
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 #create heapster service account
@@ -499,11 +499,11 @@ metadata:
   namespace: kube-system
 
 ---
-# create cdf application role. Type: clusterrole, Name: cdf:application
+# create keel application role. Type: clusterrole, Name: keel:application
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cdf:application
+  name: keel:application
 rules:
 - apiGroups:
   - ""
@@ -547,30 +547,30 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: default:cdf:application
+  name: default:keel:application
   namespace: {KUBE_SYSTEM_NAMESPACE}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cdf:application
+  name: keel:application
 subjects:
 - kind: ServiceAccount
   name: default
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 ---
-#create rolebinding for cdf view service account in ${KUBE_SYSTEM_NAMESPACE} namespace
+#create rolebinding for keel view service account in ${KUBE_SYSTEM_NAMESPACE} namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:view
+  name: keel:view
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: view
 subjects:
 - kind: ServiceAccount
-  name: cdf-view
+  name: keel-view
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 ---
@@ -578,7 +578,7 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:dashboard:cluster-admin
+  name: keel:dashboard:cluster-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -619,18 +619,18 @@ subjects:
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 ---
-#create cluster rolebinding for cdf deployer
+#create cluster rolebinding for keel deployer
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf-deployer:cluster-admin
+  name: keel-deployer:cluster-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: cdf-deployer
+  name: keel-deployer
   namespace: {KUBE_SYSTEM_NAMESPACE}
 
 ---
@@ -638,7 +638,7 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:system:node
+  name: keel:system:node
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -653,7 +653,7 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cdf:kubernetes-admin
+  name: keel:kubernetes-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

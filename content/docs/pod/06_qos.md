@@ -1,5 +1,6 @@
 ---
 title: QoS
+weight: 6
 ---
 
 QoS（Quality of Service），是作用在 Pod 上的一个配置，当 Kubernetes 创建一个 Pod 时，它就会给这个 Pod 分配一个 QoS 等级，可以是以下等级之一：

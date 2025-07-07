@@ -2,13 +2,11 @@
 title: Service
 ---
 
-Pod 是有生命周期的，它们可以被创建，也可以被销毁，并且创建 Pod 时， pod 会动态获取 IP 地址。也就是说 pod 的 ip 是变化的。
-所以当集群内的 pod 要访问另一个 pod 时，通过 ip 是不可靠的。
+Pod 是有生命周期的，它们可以被创建，也可以被销毁，并且创建 Pod 时， pod 会动态获取 IP 地址。也就是说 pod 的 ip 是变化的。所以当集群内的 pod 要访问另一个 pod 时，通过 ip 是不可靠的。
 
 因为，Kubernetes 定义了 `Service` 对象。 **Service 是对一组提供相同功能的 Pods 的抽象，并为它们提供一个统一的入口**。
-借助 Service，应用可以方便的实现服务发现与负载均衡，并实现应用的零宕机升级。Service 通过 [Label Selector](../cluster/label.html) 来选取服务后端，
-一般配合 Replication Controller 或者 Deployment 来保证后端容器的正常运行。
-这些匹配标签的 Pod IP 和端口列表组成 endpoints，由 `kube-proxy` 负责将服务 IP 负载均衡到这些 endpoints 上。
+
+借助 Service，应用可以方便的实现服务发现与负载均衡，并实现应用的零宕机升级。Service 通过 [Label Selector](../cluster/label.html) 来选取服务后端，一般配合 Replication Controller 或者 Deployment 来保证后端容器的正常运行。这些匹配标签的 Pod IP 和端口列表组成 endpoints，由 `kube-proxy` 负责将服务 IP 负载均衡到这些 endpoints 上。
 
 比如，一个 backend pod 要访问 mysql pod，mysql 有三个副本， backend 不需要关心 mysql pod 可能会发生的变化，Service 定义的抽象能够解耦这种关联。
 
@@ -26,11 +24,9 @@ spec:
       targetPort: 9376
 ```
 
-上述配置将创建一个名称为 `my-service` 的 Service 对象，它会将请求代理到使用 TCP 端口 9376，并且具有标签 `app=MyApp` 的 Pod 上。
-这个 Service 将被指派一个 IP 地址（通常称为 “Cluster IP”），它会被服务的代理使用。
+上述配置将创建一个名称为 `my-service` 的 Service 对象，它会将请求代理到使用 TCP 端口 9376，并且具有标签 `app=MyApp` 的 Pod 上。这个 Service 将被指派一个 IP 地址（通常称为 “Cluster IP”），它会被服务的代理使用。
 
-Service 能够将一个接收端口映射到任意的 `targetPort`。 默认情况下，`targetPort` 将被设置为与 `port` 字段相同的值。
-`targetPort` 可以是一个字符串，引用了 backend Pod 的一个端口的名称。但是，实际指派给该端口名称的端口号，在每个 backend Pod 中可能并不相同。
+Service 能够将一个接收端口映射到任意的 `targetPort`。 默认情况下，`targetPort` 将被设置为与 `port` 字段相同的值。`targetPort` 可以是一个字符串，引用了 backend Pod 的一个端口的名称。但是，实际指派给该端口名称的端口号，在每个 backend Pod 中可能并不相同。
 
 ## 类型
 
@@ -320,3 +316,209 @@ NAMESPACE     NAME         CLUSTER-IP      EXTERNAL-IP      PORT(S)         AGE
 default       nginx        None            <none>           80/TCP          5m
 kube-system   kube-dns     172.26.255.70   <none>           53/UDP,53/TCP   1d
 ```
+
+### Headless Service 原理
+
+**Service 是 Kubernetes 项目中用来将一组 Pod 暴露给外界访问的一种机制**。比如，一个 Deployment 有 3 个 Pod，那么我就可以定义一个 Service。然后，用户只要能访问到这个 Service，它就能访问到某个具体的 Pod。
+
+那么，这个 Service 又是如何被访问的呢？
+
+**第一种方式，是以 Service 的 VIP（Virtual IP，即：虚拟 IP）方式**。比如：当我访问 10.0.23.1 这个 Service 的 IP 地址时，10.0.23.1 其实就是一个 VIP，它会把请求转发到该 Service 所代理的某一个 Pod 上。这里的具体原理，我会在后续的 Service 章节中进行详细介绍。
+
+**第二种方式，就是以 Service 的 DNS 方式**。比如：这时候，只要我访问 “my-svc.my-namespace.svc.cluster.local”这条 DNS 记录，就可以访问到名叫 my-svc 的 Service 所代理的某一个 Pod。
+
+而在第二种 Service DNS 的方式下，具体还可以分为两种处理方法：
+
+1. 是 Normal Service。这种情况下，你访问“my-svc.my-namespace.svc.cluster.local”解析到的，正是 my-svc 这个 Service 的 VIP，后面的流程就跟 VIP 方式一致了。
+
+2. 正是 **Headless Service。这种情况下，你访问 “my-svc.my-namespace.svc.cluster.local” 解析到的，直接就是 my-svc 代理的某一个 Pod 的 IP 地址**。可以看到，这里的区别在于，Headless Service 不需要分配一个 VIP，而是可以直接以 DNS 记录的方式解析出被代理 Pod 的 IP 地址。
+
+这样的设计又有什么作用呢？
+
+下面是一个标准的 Headless Service 对应的 YAML 文件：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+```
+
+所谓的 Headless Service，其实仍是一个标准 Service 的 YAML 文件。只不过，它的 **clusterIP 字段的值是：None，即：这个 Service，没有一个 VIP 作为“头”**。这也就是 Headless 的含义。所以，这个 Service 被创建后并不会被分配一个 VIP，而是会以 DNS 记录的方式暴露出它所代理的 Pod。
+
+所有携带了 `app=nginx` 标签的 Pod，都会被这个 Service 代理起来。
+
+然后关键来了。
+
+按照这样的方式创建了一个 Headless Service 之后，它所代理的所有 Pod 的 IP 地址，都会被绑定一个这样格式的 DNS 记录，如下所示：
+
+```
+<pod-name>.<svc-name>.<namespace>.svc.cluster.local
+```
+
+**这个 DNS 记录，正是 Kubernetes 项目为 Pod 分配的唯一的“可解析身份”**（Resolvable Identity）。
+
+有了这个“可解析身份”，**只要知道了一个 Pod 的名字，以及它对应的 Service 的名字，你就可以非常确定地通过这条 DNS 记录访问到 Pod 的 IP 地址**。
+
+StatefulSet 又是如何使用这个 DNS 记录来维持 Pod 的拓扑状态的？
+
+编写一个 StatefulSet 的 YAML 文件，如下所示：
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+          name: web
+```
+
+这个 YAML 文件，多了一个 `serviceName=nginx` 字段。
+
+这个字段的作用，就是告诉 StatefulSet 控制器，在执行控制循环（Control Loop）的时候，请使用 `nginx` 这个 Headless Service 来保证 Pod 的“可解析身份”。
+
+所以，当你通过 kubectl create 创建了上面这个 Service 和 StatefulSet 之后，就会看到如下两个对象：
+
+```bash
+$ kubectl create -f svc.yaml
+$ kubectl get service nginx
+NAME      TYPE         CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+nginx     ClusterIP    None         <none>        80/TCP    10s
+ 
+$ kubectl create -f statefulset.yaml
+$ kubectl get statefulset web
+NAME      DESIRED   CURRENT   AGE
+web       2         1         19s
+```
+
+如果你手比较快的话（如果手不够快的话，Pod 很快就创建完了。不过，你依然可以通过这个 StatefulSet 的 Events 看到这些信息），还可以通过 kubectl 的 `-w` 参数，即：Watch 功能，实时查看 StatefulSet 创建两个有状态实例的过程：
+
+```bash
+$ kubectl get pods -w -l app=nginx
+NAME      READY     STATUS    RESTARTS   AGE
+web-0     0/1       Pending   0          0s
+web-0     0/1       Pending   0         0s
+web-0     0/1       ContainerCreating   0         0s
+web-0     1/1       Running   0         19s
+web-1     0/1       Pending   0         0s
+web-1     0/1       Pending   0         0s
+web-1     0/1       ContainerCreating   0         0s
+web-1     1/1       Running   0         20s
+```
+
+这个 Pod 的创建过程，不难看到，StatefulSet 给它所管理的所有 Pod 的名字，进行了编号，编号规则是：`-`。
+
+而且这些编号都是从 0 开始累加，与 StatefulSet 的每个 Pod 实例一一对应，绝不重复。
+
+**更重要的是，这些 Pod 的创建，也是严格按照编号顺序进行的**。比如，在 web-0 进入到 Running 状态、并且细分状态（Conditions）成为 Ready 之前，web-1 会一直处于 Pending 状态。
+
+当这两个 Pod 都进入了 Running 状态之后，你就可以查看到它们各自唯一的“网络身份”了。
+
+使用 `kubectl exec` 命令进入到容器中查看它们的 hostname：
+
+```bash
+$ kubectl exec web-0 -- sh -c 'hostname'
+web-0
+$ kubectl exec web-1 -- sh -c 'hostname'
+web-1
+```
+
+这两个 Pod 的 hostname 与 Pod 名字是一致的，都被分配了对应的编号。接下来，我们再试着以 DNS 的方式，访问一下这个 Headless Service：
+
+```bash
+$ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh 
+```
+
+
+通过这条命令，启动了一个一次性的 Pod，因为–rm 意味着 Pod 退出后就会被删除掉。然后，在这个 Pod 的容器里面，我们尝试用 nslookup 命令，解析一下 Pod 对应的 Headless Service：
+
+```bash
+$ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh
+$ nslookup web-0.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+ 
+Name:      web-0.nginx
+Address 1: 10.244.1.7
+ 
+$ nslookup web-1.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+ 
+Name:      web-1.nginx
+Address 1: 10.244.2.7
+```
+
+
+在另外一个 Terminal 里把这两个“有状态应用”的 Pod 删掉：
+
+```bash
+$ kubectl delete pod -l app=nginx
+pod "web-0" deleted
+pod "web-1" deleted
+```
+
+然后，再在当前 Terminal 里 Watch 一下这两个 Pod 的状态变化，就会发现一个有趣的现象：
+
+```bash
+$ kubectl get pod -w -l app=nginx
+NAME      READY     STATUS              RESTARTS   AGE
+web-0     0/1       ContainerCreating   0          0s
+NAME      READY     STATUS    RESTARTS   AGE
+web-0     1/1       Running   0          2s
+web-1     0/1       Pending   0         0s
+web-1     0/1       ContainerCreating   0         0s
+web-1     1/1       Running   0         32s
+```
+
+可以看到，当我们把这两个 Pod 删除之后，Kubernetes 会按照原先编号的顺序，创建出了两个新的 Pod。并且，Kubernetes 依然为它们分配了与原来相同的“网络身份”：`web-0.nginx` 和 `web-1.nginx`。
+
+通过这种严格的对应规则，**StatefulSet 就保证了 Pod 网络标识的稳定性**。
+
+再用 nslookup 命令，查看一下这个新 Pod 对应的 Headless Service 的话：
+
+```bash
+$ kubectl run -i --tty --image busybox dns-test --restart=Never --rm /bin/sh 
+$ nslookup web-0.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+ 
+Name:      web-0.nginx
+Address 1: 10.244.1.8
+ 
+$ nslookup web-1.nginx
+Server:    10.0.0.10
+Address 1: 10.0.0.10 kube-dns.kube-system.svc.cluster.local
+ 
+Name:      web-1.nginx
+Address 1: 10.244.2.8
+```
+
+在这个 StatefulSet 中，这两个新 Pod 的“网络标识”（比如：`web-0.nginx` 和 `web-1.nginx`），再次解析到了正确的 IP 地址。
+
+
+**Kubernetes 就成功地将 Pod 的拓扑状态（比如：哪个节点先启动，哪个节点后启动），按照 Pod 的“名字 + 编号”的方式固定了下来**。此外，Kubernetes 还为每一个 Pod 提供了一个固定并且唯一的访问入口，即：这个 Pod 对应的 DNS 记录。

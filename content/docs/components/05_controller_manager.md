@@ -2,8 +2,7 @@
 title: kube-controller-manager
 ---
 
-Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 组成，是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，
-，发现故障自动修复，确保集群处于预期的工作状态。
+Controller Manager 由 `kube-controller-manager` 和 `cloud-controller-manager` 组成，是 Kubernetes 的大脑，它通过 apiserver 监控整个集群的状态，发现故障自动修复，确保集群处于预期的工作状态。
 
 <img src="/static/images/controller-manager.png" width="70%">
 
@@ -113,3 +112,35 @@ pod 的重启策略 RestartPolicy=Always 时，才会被 Repliaction Controller 
 kubelet 在启动时，向 API server 注册节点信息，并定时向 API server 汇报节点状态。API server 负责将节点信息更新到 ETCD。
 
 Node Controller 通过 API server 实时获取 Node 信息，监控和管理所有 Node 节点。
+
+
+## 原理
+
+控制循环：
+
+```
+for {
+  实际状态 := 获取集群中对象 X 的实际状态（Actual State）
+  期望状态 := 获取集群中对象 X 的期望状态（Desired State）
+  if 实际状态 == 期望状态{
+    什么都不做
+  } else {
+    执行编排动作，将实际状态调整为期望状态
+  }
+}
+```
+
+在具体实现中，**实际状态往往来自于 Kubernetes 集群本身**。
+
+比如，kubelet 通过心跳汇报的容器状态和节点状态，或者监控系统中保存的应用监控数据，或者控制器主动收集的它自己感兴趣的信息，这些都是常见的实际状态的来源。
+
+而**期望状态，一般来自于用户提交的 YAML 文件**。
+
+
+以 Deployment 为例，简单描述一下它对控制器模型的实现：
+
+1. Deployment 控制器从 Etcd 中获取到所有携带了 “app: nginx”标签的 Pod，然后统计它们的数量，这就是实际状态；
+2. Deployment 对象的 Replicas 字段的值就是期望状态；
+3. Deployment 控制器将两个状态做比较，然后根据比较结果，确定是创建 Pod，还是删除已有的 Pod。
+
+**类似 Deployment 这样的一个控制器，实际上都是由上半部分的控制器定义（包括期望状态），加上下半部分的被控制对象的模板组成的**。

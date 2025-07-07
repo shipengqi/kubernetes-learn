@@ -15,8 +15,7 @@ RBAC API 所定义的四种顶级类型。用户可以像使用其他 Kubernetes
 
 ## Role 与 ClusterRole
 
-`Role`（角色）是一系列权限的集合，例如一个角色可以包含读取 Pod 的权限和列出 Pod 的权限。**`Role` 只能用来给某个特定 namespace 中的资源作鉴权，对多 namespace 和集群级的资源或者
-是非资源类的 API（如 `/healthz`）使用 `ClusterRole`**。
+`Role`（角色）是一系列权限的集合，例如一个角色可以包含读取 Pod 的权限和列出 Pod 的权限。**`Role` 只能用来给某个特定 namespace 中的资源作鉴权，对多 namespace 和集群级的资源或者是非资源类的 API（如 `/healthz`）使用 `ClusterRole`**。
 
 `ClusterRole` 对象可以授予与 `Role` 对象相同的权限，但由于它们属于集群范围对象，也可以使用它们授予对以下几种资源的访问权限：
 

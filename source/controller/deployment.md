@@ -243,8 +243,7 @@ $ kubectl scale deployment nginx-deployment --replicas 10
 deployment "nginx-deployment" scaled
 ```
 
-如果集群中启用了 [horizontal pod autoscaling (HPA)](./hpa.html)，你可以给 Deployment 设置一个 `autoscaler`，基于当前 Pod 的 CPU 利用率选择最
-少和最多的 Pod 数。
+如果集群中启用了 [horizontal pod autoscaling (HPA)](./hpa.html)，你可以给 Deployment 设置一个 `autoscaler`，基于当前 Pod 的 CPU 利用率选择最少和最多的 Pod 数。
 
 ```sh
 $ kubectl autoscale deployment nginx-deployment --min=10 --max=15 --cpu-percent=80
@@ -253,8 +252,7 @@ deployment "nginx-deployment" autoscaled
 
 ### 比例扩容
 
-为了保证服务的连续性，Deployment Controller 会确保，在任何时间窗口内，只有指定比例的 Pod 处于离线状态。同时，它也会确保，在任何时间窗口内，
-只有指定比例的新 Pod 被创建出来。这两个比例的值都是可以配置的，默认都是 DESIRED 值的 25%。这被称为比例扩容。
+为了保证服务的连续性，Deployment Controller 会确保，在任何时间窗口内，只有指定比例的 Pod 处于离线状态。同时，它也会确保，在任何时间窗口内，只有指定比例的新 Pod 被创建出来。这两个比例的值都是可以配置的，默认都是 DESIRED 值的 25%。这被称为比例扩容。
 
 例如，一个 Deployment 有 3 个 Pod 副本，那么控制器在“滚动更新”的过程中永远都会确保至少有 2 个 Pod 处于可用状态，至多只有 4 个 Pod 同时存在于集群中。
 

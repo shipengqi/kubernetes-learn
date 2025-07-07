@@ -5,6 +5,8 @@ title: CronJob
 
 CronJob 即定时任务，管理基于时间的 [Job](./job.html)，类似于 Linux 系统的 crontab，在指定的时间周期运行指定的任务。
 
+**CronJob 是一个 Job 对象的控制器（Controller）**！
+
 ## 开启 CronJob
 
 对于小于 1.8 的版本，需要在启动 API Server 时，通过传递选项 `--runtime-config=batch/v2alpha1=true` 可以开启 `batch/v2alpha1` API。
@@ -96,3 +98,101 @@ cronjob "hello" deleted
 
 默认没有限制，所有成功和失败的 Job 都会被保留。然而，当运行一个 Cron Job 时，很快就会堆积很多 Job，推荐设置这两个字段的值。
 设置限制值为 0，相关类型的 Job 完成后将不会被保留。
+
+
+## Job Controller 对并行作业的控制方法
+
+在 Job 对象中，负责并行控制的参数有两个：
+
+- `spec.parallelism`，它定义的是一个 Job 在任意时间最多可以启动多少个 Pod 同时运行；
+- `spec.completions`，它定义的是 Job 至少要完成的 Pod 数目，即 Job 的最小完成数。
+
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  parallelism: 2
+  completions: 4
+  template:
+    spec:
+      containers:
+      - name: pi
+        image: resouer/ubuntu-bc
+        command: ["sh", "-c", "echo 'scale=5000; 4*a(1)' | bc -l "]
+      restartPolicy: Never
+  backoffLimit: 4
+```
+
+指定了这个 Job 最大的并行数是 2，而最小的完成数是 4。
+
+```bash
+$ kubectl create -f job.yaml
+```
+
+这个 Job 其实也维护了两个状态字段，即 DESIRED 和 SUCCESSFUL，如下所示：
+
+```bash
+$ kubectl get job
+NAME      DESIRED   SUCCESSFUL   AGE
+pi        4         0            3s
+```
+
+DESIRED 的值，正是 completions 定义的最小完成数。
+
+然后，我们可以看到，这个 Job 首先创建了两个并行运行的 Pod 来计算 Pi：
+
+```bash
+$ kubectl get pods
+NAME       READY     STATUS    RESTARTS   AGE
+pi-5mt88   1/1       Running   0          6s
+pi-gmcq5   1/1       Running   0          6s
+```
+
+## 三种常用的、使用 Job 对象的方法
+
+第一种用法，也是最简单粗暴的用法：外部管理器 +Job 模板。
+
+把 Job 的 YAML 文件定义为一个“模板”，然后用一个外部工具控制这些“模板”来生成 Job。这时，Job 的定义方式如下所示：
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: process-item-$ITEM
+  labels:
+    jobgroup: jobexample
+spec:
+  template:
+    metadata:
+      name: jobexample
+      labels:
+        jobgroup: jobexample
+    spec:
+      containers:
+      - name: c
+        image: busybox
+        command: ["sh", "-c", "echo Processing item $ITEM && sleep 5"]
+      restartPolicy: Never
+```
+
+这个 Job 的 YAML 里，定义了 $ITEM 这样的“变量”。
+
+所以，在控制这种 Job 时，我们只要注意如下两个方面即可：
+
+1. 创建 Job 时，替换掉 $ITEM 这样的变量；
+2. 所有来自于同一个模板的 Job，都有一个 `jobgroup: jobexample` 标签，也就是说这一组 Job 使用这样一个相同的标识。
+
+这个模式看起来虽然很“傻”，但却是 Kubernetes 社区里使用 Job 的一个很普遍的模式。
+
+原因很简单：大多数用户在需要管理 Batch Job 的时候，都已经有了一套自己的方案，需要做的往往就是集成工作。这时候，Kubernetes 项目对这些方案来说最有价值的，就是 Job 这个 API 对象。所以，你只需要编写一个外部工具（等同于我们这里的 for 循环）来管理这些 Job 即可。
+
+
+第二种用法：拥有固定任务数目的并行 Job。
+
+这种模式下，我只关心最后是否有指定数目（spec.completions）个任务成功退出。至于执行时的并行度是多少，我并不关心。
+
+
+第三种用法，也是很常用的一个用法：指定并行度（parallelism），但不设置固定的 completions 的值。

@@ -1,5 +1,6 @@
 ---
 title: Pod 生命周期
+weight: 2
 ---
 
 Pod 的 `status` 字段是一个 `PodStatus` 对象，`PodStatus` 中有一个 `phase` 字段。`phase` 可能的状态：
@@ -129,3 +130,25 @@ spec:
 ### 调试 Hook
 
 Hook 调用的日志没有暴露个给 Pod 的 event，所以只能通过 `describe` 命令来获取，如果有错误将可以看到 `FailedPostStartHook` 或 `FailedPreStopHook` 这样的 event。
+
+
+## 恢复机制
+
+Pod 恢复机制，也叫 `restartPolicy`。它是 Pod 的 Spec 部分的一个标准字段（`pod.spec.restartPolicy`），默认值是 **`Always`，即：任何时候这个容器发生了异常，它一定会被重新创建**。
+
+但一定要强调的是，Pod 的恢复过程，永远都是发生在当前节点上，而不会跑到别的节点上去。事实上，**一旦一个 Pod 与一个节点（Node）绑定，除非这个绑定发生了变化（pod.spec.node 字段被修改），否则它永远都不会离开这个节点**。这也就意味着，如果这个宿主机宕机了，这个 Pod 也不会主动迁移到其他节点上去。
+
+如果想让 Pod 出现在其他的可用节点上，就必须使用 Deployment 这样的“控制器”来管理 Pod。
+
+除了 Always，它还有 OnFailure 和 Never 两种情况：
+
+- Always：在任何情况下，只要容器不在运行状态，就自动重启容器；
+- OnFailure: 只在容器异常时才自动重启容器；
+- Never: 从来不重启容器。
+
+
+在实际使用时，需要根据应用运行的特性，合理设置这三种恢复策略。
+
+比如，一个 Pod，它只计算 `1+1=2`，计算完成输出结果后退出，变成 Succeeded 状态。这时，你如果再用 `restartPolicy=Always` 强制重启这个 Pod 的容器，就没有任何意义了。
+
+如果关心这个容器退出后的上下文环境，比如容器退出后的日志、文件和目录，就需要将 `restartPolicy` 设置为 `Never`。因为一旦容器被自动重新创建，这些内容就有可能丢失掉了（被垃圾回收了）。

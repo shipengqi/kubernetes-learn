@@ -1,5 +1,6 @@
 ---
 title: Pod 安全策略
+weight: 4
 ---
 
 ## SecurityContext
@@ -53,7 +54,7 @@ spec:
 
 ### 什么是 Pod Security Policies
 
-Pod Security Policies 是集群级别的资源，它能够控制 Pod 运行的行为，以及它具有访问什么的能力。自动为集群内的 Pod 和 Volume 设置 Security Context。
+Pod Security Policies 是集群级别的资源，它能够控制 Pod 运行的行为，以及它具有访问什么的能力。**自动为集群内的 Pod 和 Volume 设置 Security Context**。
 
 使用 PSP 需要 API Server 开启 `extensions/v1beta1/podsecuritypolicy`，并且配置 `PodSecurityPolicy` admission 控制器。
 

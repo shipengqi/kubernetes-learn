@@ -3,14 +3,53 @@ title: Horizontal Pod Autoscaling
 ---
 
 # Horizontal Pod Autoscaling
-应用的资源使用率通常都有高峰和低谷的时候，如何削峰填谷，提高集群的整体资源利用率，让 service 中的 Pod 个数自动调整？这就有赖于 Horizontal Pod Autoscaling（HPA） 了，顾名思义，
-Pod 水平自动缩放。
 
-利用 Horizontal Pod Autoscaling，kubernetes 能够根据监测到的 CPU 利用率周期性地自动扩缩容 replication controller，deployment 和 replica set
-中 pod 的数量。
+Pod 水平自动扩缩全名是Horizontal Pod Autoscaler简称HPA。它可以基于 CPU 利用率或其他指标自动扩缩 ReplicationController、Deployment 和 ReplicaSet 中的 Pod 数量。
+
+利用 Horizontal Pod Autoscaling，kubernetes 能够根据监测到的 CPU 利用率周期性地自动扩缩容 replication controller，deployment 和 replica set 中 pod 的数量。
+
+1. Metrics Pipeline
+
+- cAdvisor：容器级资源监控（集成于Kubelet）
+- Metrics Server：集群范围资源指标聚合器（替代Heapster）
+- Custom Metrics Adapter：对接Prometheus等第三方监控系统
+
+2. Control Loop
+
+- 默认15秒同步周期（可通过--horizontal-pod-autoscaler-sync-period调整）
+- 指标采集窗口：最近1-2分钟的数据（避免瞬时波动影响）
+
+3. 前置条件检查
+
+- Pod 必须定义 `resources.requests`（否则无法计算使用率）
+- 确保 Metrics Server 正常运行
+- 目标工作负载需支持副本数动态调整（`StatefulSet` 需谨慎）
+
+4. 常见问题排查
+
+- HPA 状态显示：
+  - 检查 Metrics API 可用性：`kubectl get apiservices v1beta1.metrics.k8s.io`
+  - 验证 Metrics Server 日志
+- 不触发扩容：
+  - 确认当前指标值超过目标阈值
+  - 检查是否达到 `maxReplicas` 上限
+- 频繁抖动：
+  - 调整冷却时间参数
+  - 增加指标采集窗口
+
+5. 高级调优策略
+
+- 预测性扩缩容
+  - 结合时序预测模型预处理流量高峰
+  - 使用 `Kubernetes Event-driven Autoscalin`g（KEDA）
+- 混合扩缩模式
+  - HPA + Cluster Autoscaler实现节点层弹性
+  - HPA + VPA（垂直扩缩）实现多维资源优化
+- 金丝雀发布集成
 
 ## HPA 如何工作
-Horizontal Pod Autoscaler 由一个控制循环实现，循环周期由 controller manager 中的 `--horizontal-pod-autoscaler-sync-period` 标志指定（默认是 30 秒）。
+**Horizontal Pod Autoscaler 由一个控制循环实现**，循环周期由 controller manager 中的 `--horizontal-pod-autoscaler-sync-period` 标志指定（默认是 30 秒）。
+
 在每个周期内，controller manager 会查询 HorizontalPodAutoscaler 中定义的 metric 的资源利用率。
 Controller manager 从 resource metric API（每个 pod 的 resource metric）或者自定义 metric API（所有的metric）中获取 metric。
 

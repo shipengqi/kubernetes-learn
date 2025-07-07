@@ -1,10 +1,12 @@
 ---
 title: Pod 简介
+weight: 1
 ---
 
 Pod 是 Kubernetes 中调度的最基本单位。`kube-controller-manager` 就是用来控制 Pod 的状态和生命周期的。
 
 Pod 中封装着应用的容器（有的情况下是好几个容器），存储、独立的网络 IP，管理容器如何运行的策略选项。Pod 代表着部署的一个单位：kubernetes 中应用的一个实例，
+
 可能由一个或者多个容器组合在一起共享资源。
 
 ```yml
@@ -165,7 +167,7 @@ spec:
 
 ## 设置 Pod 的端口映射
 
-通过指定容器的 `hostPort` 和 `containerPort` 来创建端口映射，这样可以通过 Pod 所在 Node 的 IP:hostPort 来访问服务。比如：
+通过指定容器的 `hostPort` 和 `containerPort` 来创建端口映射，这样可以通过 Pod 所在 Node 的 `IP:hostPort` 来访问服务。比如：
 
 ```yml
 apiVersion: v1

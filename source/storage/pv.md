@@ -2,6 +2,12 @@
 title: Persistent Volume
 ---
 
+**PV 描述的，是持久化存储数据卷**  hostpath volume 虽然在当前机器也持久化数据了，但是 pod 如果被调度到别的机器，这个数据就没有了
+
+**PVC 描述的，则是 Pod 所希望使用的持久化存储的属性**
+
+**而 StorageClass 对象的作用，其实就是创建 PV 的模板**。
+
 PersistentVolume（PV）是由管理员配置的集群级别的资源。PV 是 Volume 之类的**持久化存储数据卷**，
 主要定义的是一个持久化存储在宿主机上的目录，比如一个 NFS 的挂载目录。
 

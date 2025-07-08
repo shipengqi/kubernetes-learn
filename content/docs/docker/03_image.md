@@ -254,7 +254,7 @@ $ docker image inspect ubuntu:latest
     }
 ```
 
-可以看到，这个 Ubuntu 镜像，实际上由五个层组成。这五个层就是五个增量 rootfs，每一层都是 Ubuntu 操作系统文件与目录的一部分；而在使用镜像时，Docker 会把这些增量联合挂载在一个统一的挂载点上（等价于前面例子里的“/C”目录）。
+可以看到，这个 Ubuntu 镜像，实际上由五个层组成。这**五个层就是五个增量 rootfs，每一层都是 Ubuntu 操作系统文件与目录的一部分**；而在**使用镜像时，Docker 会把这些增量联合挂载在一个统一的挂载点上**（等价于前面例子里的“/C”目录）。
 
 这个挂载点就是 `/var/lib/docker/aufs/mnt/`，比如：
 
@@ -336,7 +336,7 @@ bin boot dev etc home lib lib64 media mnt opt proc root run sbin srv sys tmp usr
 
 需要这样一层的原因是，**这些文件本来属于只读的 Ubuntu 镜像的一部分，但是用户往往需要在启动容器时写入一些指定的值比如 hostname，所以就需要在可读写层对它们进行修改**。
 
-可是，这些修改往往只对当前的容器有效，我们并不希望执行 docker commit 时，把这些信息连同可读写层一起提交掉。
+可是，这些修改往往只对当前的容器有效，我们并不希望执行 `docker commit` 时，把这些信息连同可读写层一起提交掉。
 
 所以，Docker 做法是，在修改了这些文件之后，以一个单独的层挂载了出来。而用户执行 docker commit 只会提交可读写层，所以是不包含这些内容的。
 
@@ -377,7 +377,7 @@ CMD ["python", "app.py"]
 
 ENTRYPOINT 和 CMD 都是 Docker 容器进程启动所必需的参数，完整执行格式是：“ENTRYPOINT CMD”。
 
-默认情况下，Docker 会为你提供一个隐含的 ENTRYPOINT，即：`/bin/sh -c`。所以，在不指定 ENTRYPOINT 时，比如在我们这个例子里，实际上运行在容器里的完整进程是：`/bin/sh -c “python app.py”`，即 **CMD 的内容就是 ENTRYPOINT 的参数**。
+默认情况下，**Docker 会为你提供一个隐含的 ENTRYPOINT，即：`/bin/sh -c`**。所以，在不指定 ENTRYPOINT 时，比如在我们这个例子里，实际上运行在容器里的完整进程是：`/bin/sh -c “python app.py”`，即 **CMD 的内容就是 ENTRYPOINT 的参数**。
 
 Dockerfile 里的原语并不都是指对容器内部的操作。就比如 ADD，它指的是把当前目录（即 Dockerfile 所在的目录）里的文件，复制到指定容器内的目录当中。
 

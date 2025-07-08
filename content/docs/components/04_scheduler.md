@@ -274,3 +274,27 @@ Kubernetes 的调度器的核心，实际上就是两个相互独立的控制循
 第二个控制循环，是调度器负责 Pod 调度的主循环，我们可以称之为 Scheduling Path。
 
 调度器就需要将 Pod 对象的 nodeName 字段的值，修改为上述 Node 的名字。这个步骤在 Kubernetes 里面被称作 Bind。
+
+
+
+
+
+
+在 Kubernetes 中，kube-scheduler 的多个实例默认采用 乐观锁竞争 机制（而非领导者选举）来调度 Pod，这是由其设计目标和功能需求决定的。以下是详细原因和设计逻辑：
+
+1. 核心原因：调度任务的天然幂等性
+调度结果可重试：如果多个 kube-scheduler 实例同时尝试调度同一个 Pod，只有第一个成功写入 nodeName 的实例会生效，其他实例的冲突操作会被 APIServer 拒绝（基于资源版本号 resourceVersion 的乐观锁）。这种机制天然避免了重复调度。
+
+无需强一致性锁：即使多个调度器实例同时计算节点选择，最终只有一个结果会被采纳，因此无需像 controller-manager 那样通过领导者选举串行化操作。
+
+2. 与 kube-controller-manager 的对比
+（1）kube-controller-manager 需要领导者选举
+操作需严格串行化：控制器（如 Deployment Controller）执行的扩缩容、状态同步等操作必须按顺序执行，否则可能导致资源状态混乱（例如重复创建副本）。
+
+依赖持久化状态：控制器的操作可能涉及多次写入（如更新 Status 和 Annotation），需要领导者保证原子性。
+
+（2）kube-scheduler 无需领导者选举
+单次原子操作：调度器只需向 Pod 的 spec.nodeName 写入一次节点名称，无需维护中间状态。
+
+冲突无害：多个调度器实例同时计算节点选择不会破坏集群状态，APIServer 的乐观锁会过滤冲突请求。
+

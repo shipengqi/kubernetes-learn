@@ -11,7 +11,7 @@ Pod 水平自动扩缩全名是Horizontal Pod Autoscaler简称HPA。它可以基
 1. Metrics Pipeline
 
 - cAdvisor：容器级资源监控（集成于Kubelet）
-- Metrics Server：集群范围资源指标聚合器（替代Heapster）
+- Metrics Server：集群范围资源指标聚合器（替代 Heapster）
 - Custom Metrics Adapter：对接Prometheus等第三方监控系统
 
 2. Control Loop

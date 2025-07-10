@@ -242,7 +242,7 @@ kube-proxy-xbd47         1/1    NodeLost  0     1h
 kube-scheduler-master      1/1    Running  0     1s
 ```
 
-CoreDNS、·kube-controller-manager· 等依赖于网络的 Pod 都处于 Pending 状态，即调度失败。这当然是符合预期的：因为这个 Master 节点的网络尚未就绪。
+CoreDNS、`kube-controller-manager` 等依赖于网络的 Pod 都处于 Pending 状态，即调度失败。这当然是符合预期的：因为这个 Master 节点的网络尚未就绪。
 
 署网络插件非常简单，只需要执行一句 `kubectl apply` 指令，以 Weave 为例：
 

@@ -62,3 +62,75 @@ kubectl drain <node>
   - 内存
   - 可运行的最大 Pod 个数
 - Info：节点的一些版本信息，如 OS、kubernetes、docker 等
+
+
+## Node Autoscaler
+
+自动调整集群的节点数量，确保有足够资源运行所有 Pod，同时避免资源浪费。
+
+触发扩容：
+
+- 当 Pod 因资源不足（Pending 状态）无法调度时，CA 会自动添加节点。
+- 触发条件：No available nodes due to CPU/Memory/GPU pressure.
+
+触发缩容：
+
+- 当节点利用率低于阈值且其上的 Pod 可被重新调度到其他节点时，CA 会删除节点。
+
+[Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) 和 [Karpenter](https://github.com/kubernetes-sigs/karpenter) 是目前由 SIG Autoscaling 维护的两个 Node Autoscaler。
+
+对于集群用户来说，这两个 Autoscaler 都应提供类似的 Node 自动扩缩容体验。 两个 Autoscaler 都将为不可调度的 Pod 制备新的 Node，也都会整合利用率不高的 Node。
+
+### Cluster Autoscaler (CA)
+#### 部署步骤
+
+```bash
+# 安装 Cluster Autoscaler
+helm repo add autoscaler https://kubernetes.github.io/autoscaler
+helm install cluster-autoscaler autoscaler/cluster-autoscaler \
+  --set autoDiscovery.clusterName=my-cluster \
+  --set awsRegion=us-west-2
+```
+
+关键配置：
+
+```yaml
+# CA 启动参数示例
+- --scale-down-utilization-threshold=0.5  # 节点利用率低于 50% 时缩容
+- --scale-down-unneeded-time=10m         # 节点空闲 10 分钟后缩容
+- --max-node-provision-time=15m          # 扩容超时时间
+```
+
+### Karpenter
+
+优势：
+
+- 直接根据 Pod 需求动态选择节点类型（无需预定义节点组）。
+- 比 CA 更快（秒级响应），成本优化更灵活。
+
+部署步骤：
+
+```bash
+# 安装 Karpenter
+helm install karpenter oci://public.ecr.aws/karpenter/karpenter \
+  --version v0.32.1 \
+  --set settings.aws.defaultInstanceType=m5.large
+```
+
+配置示例（定义 Provisioner CRD）：
+
+```yaml
+apiVersion: karpenter.sh/v1alpha5
+kind: Provisioner
+metadata:
+  name: default
+spec:
+  requirements:
+    - key: karpenter.sh/capacity-type  # 按需实例或 Spot 实例
+      operator: In
+      values: ["spot", "on-demand"]
+  limits:
+    resources:
+      cpu: 1000  # 最大总 CPU 核数
+  ttlSecondsAfterEmpty: 60  # 节点空置 60 秒后删除
+```
